@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Admin;
+namespace Dizzy\SocialMedia\Admin;
 
-use Dizzy\Events\Core\Config;
-use Dizzy\Events\Poster\Repositories\PosterRepository;
-use Dizzy\Events\Poster\Services\PosterService;
-use Dizzy\Events\Poster\Support\PosterFormats;
-use Dizzy\Events\Poster\Support\PosterTemplates;
+use Dizzy\SocialMedia\Core\Config;
+use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
+use Dizzy\SocialMedia\Poster\Services\PosterService;
+use Dizzy\SocialMedia\Poster\Support\PosterFormats;
+use Dizzy\SocialMedia\Poster\Support\PosterTemplates;
 use Throwable;
 use WP_Post;
 
@@ -30,12 +30,12 @@ final class PosterAdmin
         );
 
         add_action(
-            'admin_post_dizzy_generate_poster',
+            'admin_post_dizzy_social_generate_poster',
             [$this, 'generate']
         );
 
         add_action(
-            'admin_post_dizzy_export_poster',
+            'admin_post_dizzy_social_export_poster',
             [$this, 'export']
         );
     }
@@ -44,7 +44,7 @@ final class PosterAdmin
     {
         add_meta_box(
             'dizzy_event_poster_generator',
-            esc_html__('AI Poster Generator', 'dizzy-events-manager'),
+            esc_html__('AI Poster Generator', 'dizzy-social-media-manager'),
             [$this, 'render'],
             Config::POST_TYPE_EVENT,
             'side'
@@ -54,48 +54,48 @@ final class PosterAdmin
     public function render(WP_Post $post): void
     {
         $poster = $this->repository->findByEvent($post->ID);
-        $status = isset($_GET['dizzy_poster_status']) && is_string($_GET['dizzy_poster_status'])
-            ? sanitize_key(wp_unslash($_GET['dizzy_poster_status']))
+        $status = isset($_GET['dizzy_social_poster_status']) && is_string($_GET['dizzy_social_poster_status'])
+            ? sanitize_key(wp_unslash($_GET['dizzy_social_poster_status']))
             : '';
 
         echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
 
         wp_nonce_field(
-            'dizzy_generate_poster_' . $post->ID,
+            'dizzy_social_generate_poster_' . $post->ID,
             'dizzy_poster_nonce'
         );
 
-        echo '<input type="hidden" name="action" value="dizzy_generate_poster">';
+        echo '<input type="hidden" name="action" value="dizzy_social_generate_poster">';
         echo '<input type="hidden" name="post_id" value="' . esc_attr((string) $post->ID) . '">';
 
-        echo '<p>' . esc_html__('Generate an AI poster for this event.', 'dizzy-events-manager') . '</p>';
+        echo '<p>' . esc_html__('Generate an AI poster for this event.', 'dizzy-social-media-manager') . '</p>';
 
-        echo '<p><label for="dizzy_poster_template"><strong>' . esc_html__('Design', 'dizzy-events-manager') . '</strong></label><br>';
+        echo '<p><label for="dizzy_poster_template"><strong>' . esc_html__('Design', 'dizzy-social-media-manager') . '</strong></label><br>';
         echo '<select id="dizzy_poster_template" name="template" style="width:100%">';
         foreach (PosterTemplates::all() as $key => $template) {
             echo '<option value="' . esc_attr($key) . '">' . esc_html($template['label']) . '</option>';
         }
         echo '</select></p>';
 
-        echo '<p><label for="dizzy_poster_format"><strong>' . esc_html__('Output format', 'dizzy-events-manager') . '</strong></label><br>';
+        echo '<p><label for="dizzy_poster_format"><strong>' . esc_html__('Output format', 'dizzy-social-media-manager') . '</strong></label><br>';
         echo '<select id="dizzy_poster_format" name="format" style="width:100%">';
         foreach (PosterFormats::all() as $key => $format) {
             echo '<option value="' . esc_attr($key) . '">' . esc_html($format['label']) . '</option>';
         }
         echo '</select></p>';
 
-        echo '<p><label for="dizzy_poster_direction"><strong>' . esc_html__('Extra art direction (optional)', 'dizzy-events-manager') . '</strong></label><br>';
-        echo '<textarea id="dizzy_poster_direction" name="direction" rows="3" maxlength="300" style="width:100%" placeholder="' . esc_attr__('For example: feature a saxophone and deep blue lighting', 'dizzy-events-manager') . '"></textarea></p>';
+        echo '<p><label for="dizzy_poster_direction"><strong>' . esc_html__('Extra art direction (optional)', 'dizzy-social-media-manager') . '</strong></label><br>';
+        echo '<textarea id="dizzy_poster_direction" name="direction" rows="3" maxlength="300" style="width:100%" placeholder="' . esc_attr__('For example: feature a saxophone and deep blue lighting', 'dizzy-social-media-manager') . '"></textarea></p>';
 
         if ($status === 'success') {
-            echo '<div class="notice notice-success inline"><p>' . esc_html__('Poster generated successfully.', 'dizzy-events-manager') . '</p></div>';
+            echo '<div class="notice notice-success inline"><p>' . esc_html__('Poster generated successfully.', 'dizzy-social-media-manager') . '</p></div>';
         } elseif ($status === 'error') {
-            echo '<div class="notice notice-error inline"><p>' . esc_html__('Poster generation failed. Check the API configuration and try again.', 'dizzy-events-manager') . '</p></div>';
+            echo '<div class="notice notice-error inline"><p>' . esc_html__('Poster generation failed. Check the API configuration and try again.', 'dizzy-social-media-manager') . '</p></div>';
         }
 
         if ($poster && $poster->imageUrl !== '') {
             echo '<img src="' . esc_url($poster->imageUrl) . '" style="width:100%;height:auto;" alt="">';
-            echo '<p><a class="button button-secondary" href="' . esc_url($poster->imageUrl) . '" download>' . esc_html__('Download latest poster', 'dizzy-events-manager') . '</a></p>';
+            echo '<p><a class="button button-secondary" href="' . esc_url($poster->imageUrl) . '" download>' . esc_html__('Download latest poster', 'dizzy-social-media-manager') . '</a></p>';
 
             $storedFormat = $poster->attachmentId ? (string) get_post_meta($poster->attachmentId, '_dizzy_poster_format', true) : '';
             $formatKey = $this->socialFormatKey($storedFormat);
@@ -103,16 +103,16 @@ final class PosterAdmin
             if (str_starts_with($formatKey, 'social_')) {
                 foreach (['instagram' => 'Instagram', 'facebook' => 'Facebook'] as $platform => $platformLabel) {
                     $exportUrl = wp_nonce_url(
-                        admin_url('admin-post.php?action=dizzy_export_poster&post_id=' . $post->ID . '&platform=' . $platform),
-                        'dizzy_export_poster_' . $post->ID
+                        admin_url('admin-post.php?action=dizzy_social_export_poster&post_id=' . $post->ID . '&platform=' . $platform),
+                        'dizzy_social_export_poster_' . $post->ID
                     );
-                    echo '<p><a class="button button-primary" href="' . esc_url($exportUrl) . '">' . esc_html(sprintf(__('Export for %s', 'dizzy-events-manager'), $platformLabel)) . '</a></p>';
+                    echo '<p><a class="button button-primary" href="' . esc_url($exportUrl) . '">' . esc_html(sprintf(__('Export for %s', 'dizzy-social-media-manager'), $platformLabel)) . '</a></p>';
                 }
             }
         }
 
         submit_button(
-            esc_html__('Generate Poster', 'dizzy-events-manager'),
+            esc_html__('Generate Poster', 'dizzy-social-media-manager'),
             'primary',
             'submit',
             false
@@ -136,11 +136,11 @@ final class PosterAdmin
         }
 
         if (! current_user_can('edit_post', $postId)) {
-            wp_die(esc_html__('Permission denied.', 'dizzy-events-manager'));
+            wp_die(esc_html__('Permission denied.', 'dizzy-social-media-manager'));
         }
 
         check_admin_referer(
-            'dizzy_generate_poster_' . $postId,
+            'dizzy_social_generate_poster_' . $postId,
             'dizzy_poster_nonce'
         );
 
@@ -165,11 +165,11 @@ final class PosterAdmin
                 'venue' => $details['venue'],
             ]);
         } catch (Throwable) {
-            wp_safe_redirect(add_query_arg('dizzy_poster_status', 'error', $redirectUrl));
+            wp_safe_redirect(add_query_arg('dizzy_social_poster_status', 'error', $redirectUrl));
             exit;
         }
 
-        wp_safe_redirect(add_query_arg('dizzy_poster_status', 'success', $redirectUrl));
+        wp_safe_redirect(add_query_arg('dizzy_social_poster_status', 'success', $redirectUrl));
         exit;
     }
 
@@ -181,13 +181,13 @@ final class PosterAdmin
             : '';
 
         if ($postId <= 0 || ! in_array($platform, ['instagram', 'facebook'], true)) {
-            wp_die(esc_html__('Invalid poster export request.', 'dizzy-events-manager'));
+            wp_die(esc_html__('Invalid poster export request.', 'dizzy-social-media-manager'));
         }
 
-        check_admin_referer('dizzy_export_poster_' . $postId);
+        check_admin_referer('dizzy_social_export_poster_' . $postId);
 
         if (! current_user_can('edit_post', $postId)) {
-            wp_die(esc_html__('Permission denied.', 'dizzy-events-manager'));
+            wp_die(esc_html__('Permission denied.', 'dizzy-social-media-manager'));
         }
 
         $poster = $this->repository->findByEvent($postId);
@@ -197,7 +197,7 @@ final class PosterAdmin
         $path = $attachmentId > 0 ? get_attached_file($attachmentId) : '';
 
         if (! str_starts_with($formatKey, 'social_') || ! is_string($path) || ! is_readable($path)) {
-            wp_die(esc_html__('No matching social poster is available for export.', 'dizzy-events-manager'));
+            wp_die(esc_html__('No matching social poster is available for export.', 'dizzy-social-media-manager'));
         }
 
         $slug = sanitize_title(get_the_title($postId)) ?: 'event';

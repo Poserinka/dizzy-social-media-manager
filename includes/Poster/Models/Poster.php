@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Models;
+namespace Dizzy\SocialMedia\Poster\Models;
 
 defined('ABSPATH') || exit;
 

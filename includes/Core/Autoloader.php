@@ -2,12 +2,12 @@
 /**
  * PSR-4 Autoloader.
  *
- * @package Dizzy\Events
+ * @package Dizzy\SocialMedia
  */
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Core;
+namespace Dizzy\SocialMedia\Core;
 
 defined('ABSPATH') || exit;
 
@@ -24,7 +24,7 @@ final class Autoloader {
 	/**
 	 * Plugin includes directory.
 	 */
-	private const BASE_DIRECTORY = DIZZY_EVENTS_PATH . 'includes/';
+	private const BASE_DIRECTORY = DIZZY_SOCIAL_PATH . 'includes/';
 
 	/**
 	 * Register autoloader.

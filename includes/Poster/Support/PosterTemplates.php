@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Support;
+namespace Dizzy\SocialMedia\Poster\Support;
 
 defined('ABSPATH') || exit;
 
@@ -12,9 +12,9 @@ final class PosterTemplates
     public static function all(): array
     {
         return [
-            'classic' => ['label' => __('Classic', 'dizzy-events-manager'), 'accent' => [222, 184, 92], 'style' => 'timeless jazz photography, warm gold accents, elegant and restrained'],
-            'food' => ['label' => __('Food', 'dizzy-events-manager'), 'accent' => [227, 111, 67], 'style' => 'lively food and music atmosphere, warm terracotta accents, inviting and editorial'],
-            'club' => ['label' => __('Club', 'dizzy-events-manager'), 'accent' => [181, 82, 255], 'style' => 'energetic late-night jazz club, purple neon accents, bold and cinematic'],
+            'classic' => ['label' => __('Classic', 'dizzy-social-media-manager'), 'accent' => [222, 184, 92], 'style' => 'timeless jazz photography, warm gold accents, elegant and restrained'],
+            'food' => ['label' => __('Food', 'dizzy-social-media-manager'), 'accent' => [227, 111, 67], 'style' => 'lively food and music atmosphere, warm terracotta accents, inviting and editorial'],
+            'club' => ['label' => __('Club', 'dizzy-social-media-manager'), 'accent' => [181, 82, 255], 'style' => 'energetic late-night jazz club, purple neon accents, bold and cinematic'],
         ];
     }
 

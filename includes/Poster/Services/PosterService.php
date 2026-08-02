@@ -2,14 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Services;
+namespace Dizzy\SocialMedia\Poster\Services;
 
-use Dizzy\Events\Poster\Contracts\PosterGenerator;
-use Dizzy\Events\Poster\Models\Poster;
-use Dizzy\Events\Poster\Repositories\PosterRepository;
-use Dizzy\Events\Poster\Renderers\PosterRenderer;
-use Dizzy\Events\Poster\Support\PosterFormats;
-use Dizzy\Events\Poster\Support\PosterTemplates;
+use Dizzy\SocialMedia\Poster\Contracts\PosterGenerator;
+use Dizzy\SocialMedia\Poster\Models\Poster;
+use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
+use Dizzy\SocialMedia\Poster\Renderers\PosterRenderer;
+use Dizzy\SocialMedia\Poster\Support\PosterFormats;
+use Dizzy\SocialMedia\Poster\Support\PosterTemplates;
 use RuntimeException;
 use Throwable;
 
@@ -86,7 +86,7 @@ final class PosterService
         }
 
         do_action(
-            'dizzy_events_poster_created',
+            'dizzy_social_poster_created',
             $poster
         );
 

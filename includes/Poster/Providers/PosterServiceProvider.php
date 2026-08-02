@@ -2,15 +2,15 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Providers;
+namespace Dizzy\SocialMedia\Poster\Providers;
 
-use Dizzy\Events\Core\Container;
-use Dizzy\Events\Poster\Contracts\PosterGenerator;
-use Dizzy\Events\Poster\Generators\OpenAIImageGenerator;
-use Dizzy\Events\Poster\Generators\PlaceholderGenerator;
-use Dizzy\Events\Poster\Repositories\PosterRepository;
-use Dizzy\Events\Poster\Renderers\PosterRenderer;
-use Dizzy\Events\Poster\Services\PosterService;
+use Dizzy\SocialMedia\Core\Container;
+use Dizzy\SocialMedia\Poster\Contracts\PosterGenerator;
+use Dizzy\SocialMedia\Poster\Generators\OpenAIImageGenerator;
+use Dizzy\SocialMedia\Poster\Generators\PlaceholderGenerator;
+use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
+use Dizzy\SocialMedia\Poster\Renderers\PosterRenderer;
+use Dizzy\SocialMedia\Poster\Services\PosterService;
 
 defined('ABSPATH') || exit;
 
@@ -28,7 +28,7 @@ final class PosterServiceProvider
         $container->singleton(
             PosterGenerator::class,
             static function (): PosterGenerator {
-                $apiKey = (string) get_option('dizzy_events_openai_api_key', '');
+                $apiKey = (string) get_option('dizzy_social_openai_api_key', '');
 
                 if ($apiKey !== '') {
                     return new OpenAIImageGenerator($apiKey);

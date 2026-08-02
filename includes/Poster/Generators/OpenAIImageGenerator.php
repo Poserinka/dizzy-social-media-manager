@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Generators;
+namespace Dizzy\SocialMedia\Poster\Generators;
 
-use Dizzy\Events\Poster\Contracts\PosterGenerator;
+use Dizzy\SocialMedia\Poster\Contracts\PosterGenerator;
 
 defined('ABSPATH') || exit;
 

@@ -2,58 +2,37 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Core;
+namespace Dizzy\SocialMedia\Core;
 
-use Dizzy\Events\Admin\AdminServiceProvider;
-use Dizzy\Events\Frontend\FrontendServiceProvider;
-use Dizzy\Events\Poster\Providers\PosterServiceProvider;
-use Dizzy\Events\Providers\EventServiceProvider;
-use Dizzy\Events\Providers\MailServiceProvider;
-use Dizzy\Events\Providers\PostTypeServiceProvider;
-use Dizzy\Events\Providers\ReservationServiceProvider;
+use Dizzy\SocialMedia\Admin\SocialMediaAdmin;
+use Dizzy\SocialMedia\Admin\PosterAdmin;
+use Dizzy\SocialMedia\Admin\PosterSettings;
+use Dizzy\SocialMedia\Poster\Providers\PosterServiceProvider;
+use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
+use Dizzy\SocialMedia\Poster\Services\PosterService;
 
 defined('ABSPATH') || exit;
 
-/**
- * Application bootstrap.
- *
- * Creates and manages application services.
- *
- * @package Dizzy\Events\Core
- */
 final class Application
 {
-    private Container $container;
-
-    public function __construct()
-    {
-        $this->container = new Container();
-    }
-
     public function boot(): void
     {
-        $this->registerProviders();
-    }
-
-    public function container(): Container
-    {
-        return $this->container;
-    }
-
-    private function registerProviders(): void
-    {
-        $providers = [
-            EventServiceProvider::class,
-            ReservationServiceProvider::class,
-            PosterServiceProvider::class,
-            MailServiceProvider::class,
-            AdminServiceProvider::class,
-            PostTypeServiceProvider::class,
-            FrontendServiceProvider::class,
-        ];
-
-        foreach ($providers as $provider) {
-            (new $provider())->register($this->container);
+        if (! post_type_exists(Config::POST_TYPE_EVENT)) {
+            add_action('admin_notices', static function (): void {
+                echo '<div class="notice notice-error"><p>' . esc_html__('Dizzy Social Media Manager requires Dizzy Events Manager to be active.', 'dizzy-social-media-manager') . '</p></div>';
+            });
+            return;
         }
+
+        $container = new Container();
+        (new PosterServiceProvider())->register($container);
+
+        $dashboard = new SocialMediaAdmin($container->get(PosterRepository::class));
+        $poster = new PosterAdmin($container->get(PosterService::class), $container->get(PosterRepository::class));
+        $settings = new PosterSettings();
+
+        $dashboard->register();
+        $poster->register();
+        $settings->register();
     }
 }

@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Repositories;
+namespace Dizzy\SocialMedia\Poster\Repositories;
 
-use Dizzy\Events\Poster\Models\Poster;
+use Dizzy\SocialMedia\Poster\Models\Poster;
 use RuntimeException;
 
 defined('ABSPATH') || exit;
@@ -15,7 +15,7 @@ final class PosterRepository
     {
         global $wpdb;
 
-        $table = $wpdb->prefix . 'dizzy_event_posters';
+        $table = $wpdb->prefix . 'dizzy_social_posters';
         $now = current_time('mysql');
         $eventId = (int) ($data['event_id'] ?? 0);
 
@@ -51,7 +51,7 @@ final class PosterRepository
     {
         global $wpdb;
 
-        $table = $wpdb->prefix . 'dizzy_event_posters';
+        $table = $wpdb->prefix . 'dizzy_social_posters';
 
         $row = $wpdb->get_row(
             $wpdb->prepare("SELECT * FROM {$table} WHERE id = %d", $id),
@@ -73,7 +73,7 @@ final class PosterRepository
             return null;
         }
 
-        $table = $wpdb->prefix . 'dizzy_event_posters';
+        $table = $wpdb->prefix . 'dizzy_social_posters';
         $row = $wpdb->get_row(
             $wpdb->prepare(
                 "SELECT * FROM {$table} WHERE event_id = %d ORDER BY id DESC LIMIT 1",

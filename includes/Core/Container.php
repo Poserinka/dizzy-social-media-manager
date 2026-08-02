@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Core;
+namespace Dizzy\SocialMedia\Core;
 
 use Closure;
 use RuntimeException;
@@ -14,7 +14,7 @@ defined('ABSPATH') || exit;
  *
  * Manages shared service instances.
  *
- * @package Dizzy\Events\Core
+ * @package Dizzy\SocialMedia\Core
  */
 final class Container
 {

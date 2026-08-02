@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Dizzy\Events\Poster\Renderers;
+namespace Dizzy\SocialMedia\Poster\Renderers;
 
 use RuntimeException;
 
@@ -82,7 +82,7 @@ final class PosterRenderer
 
     private function fontPath(): string
     {
-        $font = (string) apply_filters('dizzy_events_poster_font_path', '');
+        $font = (string) apply_filters('dizzy_social_poster_font_path', '');
 
         return $font !== '' && is_readable($font) ? $font : '';
     }
@@ -163,7 +163,7 @@ final class PosterRenderer
     private function drawWatermark($canvas, int $canvasWidth, int $canvasHeight, bool $isPrint): void
     {
         $enabled = (bool) get_option(
-            $isPrint ? 'dizzy_events_watermark_print' : 'dizzy_events_watermark_social',
+            $isPrint ? 'dizzy_social_watermark_print' : 'dizzy_social_watermark_social',
             ! $isPrint
         );
 
@@ -171,7 +171,7 @@ final class PosterRenderer
             return;
         }
 
-        $logoId = (int) get_option('dizzy_events_watermark_image_id', 0);
+        $logoId = (int) get_option('dizzy_social_watermark_image_id', 0);
 
         if ($logoId <= 0) {
             $logoId = (int) get_theme_mod('custom_logo', 0);
@@ -192,11 +192,11 @@ final class PosterRenderer
 
         $logoWidth = imagesx($logo);
         $logoHeight = imagesy($logo);
-        $sizeMode = (string) get_option('dizzy_events_watermark_size_mode', 'scaled');
+        $sizeMode = (string) get_option('dizzy_social_watermark_size_mode', 'scaled');
         $targetWidth = match ($sizeMode) {
             'original' => $logoWidth,
-            'custom' => (int) get_option('dizzy_events_watermark_custom_width', 400),
-            default => (int) round($canvasWidth * ((int) get_option('dizzy_events_watermark_scale', 35) / 100)),
+            'custom' => (int) get_option('dizzy_social_watermark_custom_width', 400),
+            default => (int) round($canvasWidth * ((int) get_option('dizzy_social_watermark_scale', 35) / 100)),
         };
         $targetWidth = max(1, min($canvasWidth, $targetWidth));
         $targetHeight = max(1, (int) round($logoHeight * ($targetWidth / $logoWidth)));
@@ -208,10 +208,10 @@ final class PosterRenderer
         imagecopyresampled($scaled, $logo, 0, 0, 0, 0, $targetWidth, $targetHeight, $logoWidth, $logoHeight);
         imagedestroy($logo);
 
-        $opacity = max(0, min(100, (int) get_option('dizzy_events_watermark_opacity', 85)));
+        $opacity = max(0, min(100, (int) get_option('dizzy_social_watermark_opacity', 85)));
         $this->applyOpacity($scaled, $opacity);
 
-        $alignment = (string) get_option('dizzy_events_watermark_alignment', 'top_center');
+        $alignment = (string) get_option('dizzy_social_watermark_alignment', 'top_center');
         [$vertical, $horizontal] = array_pad(explode('_', $alignment, 2), 2, 'center');
         $x = match ($horizontal) {
             'left' => 0,
@@ -223,10 +223,10 @@ final class PosterRenderer
             'bottom' => $canvasHeight - $targetHeight,
             default => (int) round(($canvasHeight - $targetHeight) / 2),
         };
-        $offsetX = (float) get_option('dizzy_events_watermark_offset_x', 0);
-        $offsetY = (float) get_option('dizzy_events_watermark_offset_y', 0);
+        $offsetX = (float) get_option('dizzy_social_watermark_offset_x', 0);
+        $offsetY = (float) get_option('dizzy_social_watermark_offset_y', 0);
 
-        if ((string) get_option('dizzy_events_watermark_offset_unit', 'percentages') === 'percentages') {
+        if ((string) get_option('dizzy_social_watermark_offset_unit', 'percentages') === 'percentages') {
             $offsetX = $canvasWidth * ($offsetX / 100);
             $offsetY = $canvasHeight * ($offsetY / 100);
         }
