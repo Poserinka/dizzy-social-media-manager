@@ -19,7 +19,7 @@ final class Autoloader {
 	/**
 	 * Root namespace.
 	 */
-	private const NAMESPACE = 'Dizzy\\Events\\';
+	private const NAMESPACE = 'Dizzy\\SocialMedia\\';
 
 	/**
 	 * Plugin includes directory.
