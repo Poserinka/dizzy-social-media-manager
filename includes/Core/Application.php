@@ -7,6 +7,10 @@ namespace Dizzy\SocialMedia\Core;
 use Dizzy\SocialMedia\Admin\SocialMediaAdmin;
 use Dizzy\SocialMedia\Admin\PosterAdmin;
 use Dizzy\SocialMedia\Admin\PosterSettings;
+use Dizzy\SocialMedia\Admin\AccountsAdmin;
+use Dizzy\SocialMedia\Admin\AutoPostAdmin;
+use Dizzy\SocialMedia\Admin\TemplatesAdmin;
+use Dizzy\SocialMedia\Services\SocialPublisher;
 use Dizzy\SocialMedia\Poster\Providers\PosterServiceProvider;
 use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
 use Dizzy\SocialMedia\Poster\Services\PosterService;
@@ -30,9 +34,17 @@ final class Application
         $dashboard = new SocialMediaAdmin($container->get(PosterRepository::class));
         $poster = new PosterAdmin($container->get(PosterService::class), $container->get(PosterRepository::class));
         $settings = new PosterSettings();
+        $accounts = new AccountsAdmin();
+        $autopost = new AutoPostAdmin();
+        $templates = new TemplatesAdmin();
+        $publisher = new SocialPublisher($container->get(PosterRepository::class));
 
         $dashboard->register();
         $poster->register();
         $settings->register();
+        $accounts->register();
+        $autopost->register();
+        $templates->register();
+        $publisher->register();
     }
 }
