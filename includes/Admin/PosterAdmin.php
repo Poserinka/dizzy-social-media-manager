@@ -58,14 +58,11 @@ final class PosterAdmin
             ? sanitize_key(wp_unslash($_GET['dizzy_social_poster_status']))
             : '';
 
-        echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '">';
-
         wp_nonce_field(
             'dizzy_social_generate_poster_' . $post->ID,
             'dizzy_poster_nonce'
         );
 
-        echo '<input type="hidden" name="action" value="dizzy_social_generate_poster">';
         echo '<input type="hidden" name="post_id" value="' . esc_attr((string) $post->ID) . '">';
 
         echo '<p>' . esc_html__('Generate an AI poster for this event.', 'dizzy-social-media-manager') . '</p>';
@@ -90,7 +87,12 @@ final class PosterAdmin
         if ($status === 'success') {
             echo '<div class="notice notice-success inline"><p>' . esc_html__('Poster generated successfully.', 'dizzy-social-media-manager') . '</p></div>';
         } elseif ($status === 'error') {
-            echo '<div class="notice notice-error inline"><p>' . esc_html__('Poster generation failed. Check the API configuration and try again.', 'dizzy-social-media-manager') . '</p></div>';
+            $error = get_transient('dizzy_social_poster_error_' . get_current_user_id() . '_' . $post->ID);
+            delete_transient('dizzy_social_poster_error_' . get_current_user_id() . '_' . $post->ID);
+            $message = is_string($error) && $error !== ''
+                ? $error
+                : __('Poster generation failed. Check the API configuration and try again.', 'dizzy-social-media-manager');
+            echo '<div class="notice notice-error inline"><p>' . esc_html($message) . '</p></div>';
         }
 
         if ($poster && $poster->imageUrl !== '') {
@@ -111,14 +113,7 @@ final class PosterAdmin
             }
         }
 
-        submit_button(
-            esc_html__('Generate Poster', 'dizzy-social-media-manager'),
-            'primary',
-            'submit',
-            false
-        );
-
-        echo '</form>';
+        echo '<button type="submit" name="action" value="dizzy_social_generate_poster" class="button button-primary" formmethod="post" formaction="' . esc_url(admin_url('admin-post.php')) . '">' . esc_html__('Generate Poster', 'dizzy-social-media-manager') . '</button>';
     }
 
     public function generate(): void
@@ -164,7 +159,12 @@ final class PosterAdmin
                 'date' => $details['date'],
                 'venue' => $details['venue'],
             ]);
-        } catch (Throwable) {
+        } catch (Throwable $exception) {
+            set_transient(
+                'dizzy_social_poster_error_' . get_current_user_id() . '_' . $postId,
+                $exception->getMessage(),
+                5 * MINUTE_IN_SECONDS
+            );
             wp_safe_redirect(add_query_arg('dizzy_social_poster_status', 'error', $redirectUrl));
             exit;
         }

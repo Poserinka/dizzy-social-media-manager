@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Dizzy\SocialMedia\Poster\Generators;
 
 use Dizzy\SocialMedia\Poster\Contracts\PosterGenerator;
+use RuntimeException;
 
 defined('ABSPATH') || exit;
 
@@ -18,7 +19,7 @@ final class OpenAIImageGenerator implements PosterGenerator
     public function generate(string $prompt, array $options = []): string
     {
         if ($this->apiKey === '' || trim($prompt) === '') {
-            return '';
+            throw new RuntimeException('OpenAI API key or poster prompt is missing. Check Social Media > Poster Settings.');
         }
 
         $response = wp_remote_post(
@@ -35,16 +36,12 @@ final class OpenAIImageGenerator implements PosterGenerator
                         ? $options['size']
                         : '1024x1024',
                 ]),
-                'timeout' => 60,
+                'timeout' => 120,
             ]
         );
 
         if (is_wp_error($response)) {
-            return '';
-        }
-
-        if (wp_remote_retrieve_response_code($response) !== 200) {
-            return '';
+            throw new RuntimeException('OpenAI request failed: ' . $response->get_error_message());
         }
 
         $body = json_decode(
@@ -52,8 +49,15 @@ final class OpenAIImageGenerator implements PosterGenerator
             true
         );
 
+        if (wp_remote_retrieve_response_code($response) !== 200) {
+            $message = is_array($body) && isset($body['error']['message']) && is_string($body['error']['message'])
+                ? $body['error']['message']
+                : 'HTTP ' . wp_remote_retrieve_response_code($response);
+            throw new RuntimeException('OpenAI image generation failed: ' . $message);
+        }
+
         if (! is_array($body) || ! isset($body['data'][0]) || ! is_array($body['data'][0])) {
-            return '';
+            throw new RuntimeException('OpenAI returned an invalid image response.');
         }
 
         $image = $body['data'][0];
@@ -62,8 +66,10 @@ final class OpenAIImageGenerator implements PosterGenerator
             return 'data:image/png;base64,' . $image['b64_json'];
         }
 
-        return isset($image['url']) && is_string($image['url'])
-            ? $image['url']
-            : '';
+        if (isset($image['url']) && is_string($image['url']) && $image['url'] !== '') {
+            return $image['url'];
+        }
+
+        throw new RuntimeException('OpenAI returned no image data.');
     }
 }

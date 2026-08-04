@@ -7,7 +7,6 @@ namespace Dizzy\SocialMedia\Poster\Providers;
 use Dizzy\SocialMedia\Core\Container;
 use Dizzy\SocialMedia\Poster\Contracts\PosterGenerator;
 use Dizzy\SocialMedia\Poster\Generators\OpenAIImageGenerator;
-use Dizzy\SocialMedia\Poster\Generators\PlaceholderGenerator;
 use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
 use Dizzy\SocialMedia\Poster\Renderers\PosterRenderer;
 use Dizzy\SocialMedia\Poster\Services\PosterService;
@@ -29,12 +28,7 @@ final class PosterServiceProvider
             PosterGenerator::class,
             static function (): PosterGenerator {
                 $apiKey = (string) get_option('dizzy_social_openai_api_key', '');
-
-                if ($apiKey !== '') {
-                    return new OpenAIImageGenerator($apiKey);
-                }
-
-                return new PlaceholderGenerator();
+                return new OpenAIImageGenerator($apiKey);
             }
         );
 
