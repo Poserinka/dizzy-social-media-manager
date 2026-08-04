@@ -44,7 +44,7 @@ final class PosterAdmin
     {
         add_meta_box(
             'dizzy_event_poster_generator',
-            esc_html__('AI Poster Generator', 'dizzy-social-media-manager'),
+            esc_html__('Poster Generator', 'dizzy-social-media-manager'),
             [$this, 'render'],
             Config::POST_TYPE_EVENT,
             'side'
@@ -53,6 +53,8 @@ final class PosterAdmin
 
     public function render(WP_Post $post): void
     {
+        wp_enqueue_media();
+
         $poster = $this->repository->findByEvent($post->ID);
         $status = isset($_GET['dizzy_social_poster_status']) && is_string($_GET['dizzy_social_poster_status'])
             ? sanitize_key(wp_unslash($_GET['dizzy_social_poster_status']))
@@ -65,7 +67,22 @@ final class PosterAdmin
 
         echo '<input type="hidden" name="post_id" value="' . esc_attr((string) $post->ID) . '">';
 
-        echo '<p>' . esc_html__('Generate an AI poster for this event.', 'dizzy-social-media-manager') . '</p>';
+        $backgroundId = (int) get_post_meta($post->ID, '_dizzy_social_poster_background_id', true);
+        if ($backgroundId <= 0) {
+            $backgroundId = (int) get_post_thumbnail_id($post->ID);
+        }
+        $backgroundUrl = $backgroundId > 0 ? (string) wp_get_attachment_image_url($backgroundId, 'medium') : '';
+
+        echo '<p>' . esc_html__('Create a poster from the event image. No AI or API key is required.', 'dizzy-social-media-manager') . '</p>';
+        echo '<p><label><strong>' . esc_html__('Background image', 'dizzy-social-media-manager') . '</strong></label></p>';
+        echo '<input type="hidden" id="dizzy_poster_background_id" name="background_id" value="' . esc_attr((string) $backgroundId) . '">';
+        echo '<div id="dizzy_poster_background_preview" style="margin-bottom:8px">';
+        if ($backgroundUrl !== '') {
+            echo '<img src="' . esc_url($backgroundUrl) . '" alt="" style="display:block;max-width:100%;height:auto">';
+        }
+        echo '</div>';
+        echo '<p><button type="button" id="dizzy_select_poster_background" class="button">' . esc_html__('Select image', 'dizzy-social-media-manager') . '</button> ';
+        echo '<button type="button" id="dizzy_use_featured_background" class="button">' . esc_html__('Use featured image', 'dizzy-social-media-manager') . '</button></p>';
 
         echo '<p><label for="dizzy_poster_template"><strong>' . esc_html__('Design', 'dizzy-social-media-manager') . '</strong></label><br>';
         echo '<select id="dizzy_poster_template" name="template" style="width:100%">';
@@ -81,9 +98,6 @@ final class PosterAdmin
         }
         echo '</select></p>';
 
-        echo '<p><label for="dizzy_poster_direction"><strong>' . esc_html__('Extra art direction (optional)', 'dizzy-social-media-manager') . '</strong></label><br>';
-        echo '<textarea id="dizzy_poster_direction" name="direction" rows="3" maxlength="300" style="width:100%" placeholder="' . esc_attr__('For example: feature a saxophone and deep blue lighting', 'dizzy-social-media-manager') . '"></textarea></p>';
-
         if ($status === 'success') {
             echo '<div class="notice notice-success inline"><p>' . esc_html__('Poster generated successfully.', 'dizzy-social-media-manager') . '</p></div>';
         } elseif ($status === 'error') {
@@ -91,7 +105,7 @@ final class PosterAdmin
             delete_transient('dizzy_social_poster_error_' . get_current_user_id() . '_' . $post->ID);
             $message = is_string($error) && $error !== ''
                 ? $error
-                : __('Poster generation failed. Check the API configuration and try again.', 'dizzy-social-media-manager');
+                : __('Poster generation failed. Check the selected image and server image support, then try again.', 'dizzy-social-media-manager');
             echo '<div class="notice notice-error inline"><p>' . esc_html($message) . '</p></div>';
         }
 
@@ -114,6 +128,9 @@ final class PosterAdmin
         }
 
         echo '<button type="submit" name="action" value="dizzy_social_generate_poster" class="button button-primary" formmethod="post" formaction="' . esc_url(admin_url('admin-post.php')) . '">' . esc_html__('Generate Poster', 'dizzy-social-media-manager') . '</button>';
+        $featuredId = (int) get_post_thumbnail_id($post->ID);
+        $featuredUrl = $featuredId > 0 ? (string) wp_get_attachment_image_url($featuredId, 'medium') : '';
+        echo '<script>(()=>{const select=document.getElementById("dizzy_select_poster_background"),featured=document.getElementById("dizzy_use_featured_background"),input=document.getElementById("dizzy_poster_background_id"),preview=document.getElementById("dizzy_poster_background_preview");if(!select||!input||!preview)return;const show=(id,url)=>{input.value=id;preview.innerHTML=url?"<img src=\""+url.replace(/\"/g,"&quot;")+"\" alt=\"\" style=\"display:block;max-width:100%;height:auto\">":""};select.addEventListener("click",()=>{const frame=wp.media({title:"' . esc_js(__('Select poster background', 'dizzy-social-media-manager')) . '",button:{text:"' . esc_js(__('Use this image', 'dizzy-social-media-manager')) . '"},library:{type:"image"},multiple:false});frame.on("select",()=>{const image=frame.state().get("selection").first().toJSON();show(image.id,image.sizes&&image.sizes.medium?image.sizes.medium.url:image.url)});frame.open()});featured?.addEventListener("click",()=>show(' . $featuredId . ',"' . esc_js($featuredUrl) . '"))})();</script>';
     }
 
     public function generate(): void
@@ -145,20 +162,25 @@ final class PosterAdmin
         try {
             $templateKey = PosterTemplates::sanitize(isset($_POST['template']) && is_string($_POST['template']) ? sanitize_key(wp_unslash($_POST['template'])) : 'classic');
             $formatKey = PosterFormats::sanitize(isset($_POST['format']) && is_string($_POST['format']) ? sanitize_key(wp_unslash($_POST['format'])) : 'social_square');
-            $direction = isset($_POST['direction']) && is_string($_POST['direction'])
-                ? sanitize_textarea_field(wp_unslash($_POST['direction']))
-                : '';
+            $backgroundId = isset($_POST['background_id']) ? absint($_POST['background_id']) : 0;
+            if ($backgroundId <= 0) {
+                $backgroundId = (int) get_post_thumbnail_id($postId);
+            }
+            if ($backgroundId <= 0 || ! wp_attachment_is_image($backgroundId)) {
+                throw new \RuntimeException(__('Select a background image or set an Event Featured Image first.', 'dizzy-social-media-manager'));
+            }
             $details = $this->eventDetails($postId);
 
             $this->service->create([
                 'event_id' => $postId,
-                'prompt' => $this->buildPrompt($postId, $templateKey, $direction),
+                'source_attachment_id' => $backgroundId,
                 'template' => $templateKey,
                 'format' => $formatKey,
                 'title' => get_the_title($postId),
                 'date' => $details['date'],
                 'venue' => $details['venue'],
             ]);
+            update_post_meta($postId, '_dizzy_social_poster_background_id', $backgroundId);
         } catch (Throwable $exception) {
             set_transient(
                 'dizzy_social_poster_error_' . get_current_user_id() . '_' . $postId,
@@ -271,22 +293,6 @@ final class PosterAdmin
         }
 
         exit;
-    }
-
-    private function buildPrompt(int $postId, string $templateKey, string $direction): string
-    {
-        $title = get_the_title($postId);
-        $content = wp_strip_all_tags((string) get_post_field('post_content', $postId));
-
-        $template = PosterTemplates::get($templateKey);
-
-        return sprintf(
-            'Create a professional background image for a Jazzcafe Dizzy Rotterdam event poster. Event: %s. Details: %s. Visual direction: %s. %s. Do not include any words, letters, logos, captions, dates or typography; leave calm negative space in the lower part for text overlay.',
-            $title,
-            $content,
-            $template['style'],
-            $direction
-        );
     }
 
     /** @return array{date:string,venue:string} */

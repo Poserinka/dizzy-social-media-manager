@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Dizzy\SocialMedia\Poster\Services;
 
-use Dizzy\SocialMedia\Poster\Contracts\PosterGenerator;
 use Dizzy\SocialMedia\Poster\Models\Poster;
 use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
 use Dizzy\SocialMedia\Poster\Renderers\PosterRenderer;
@@ -19,7 +18,6 @@ final class PosterService
 {
     public function __construct(
         private readonly PosterRepository $repository,
-        private readonly PosterGenerator $generator,
         private readonly PosterRenderer $renderer,
     ) {
     }
@@ -30,24 +28,14 @@ final class PosterService
         $templateKey = PosterTemplates::sanitize((string) ($data['template'] ?? 'classic'));
         $format = PosterFormats::get($formatKey);
         $template = PosterTemplates::get($templateKey);
+        $sourceAttachmentId = (int) ($data['source_attachment_id'] ?? 0);
         $imageUrl = isset($data['image_url']) && is_string($data['image_url'])
             ? trim($data['image_url'])
             : '';
 
-        if ($imageUrl === '') {
-            $data['image_url'] = $this->generator->generate((string) ($data['prompt'] ?? ''), ['size' => $format['ai_size']]);
-
-            $imageUrl = trim((string) $data['image_url']);
-        }
-
-        if ($imageUrl === '') {
-            throw new RuntimeException('Poster generation returned no image.');
-        }
-
-        $attachmentId = $this->importMedia(
-            $imageUrl,
-            (int) ($data['event_id'] ?? 0)
-        );
+        $attachmentId = $sourceAttachmentId > 0
+            ? $this->duplicateAttachment($sourceAttachmentId, (int) ($data['event_id'] ?? 0))
+            : $this->importMedia($imageUrl, (int) ($data['event_id'] ?? 0));
 
         if ($attachmentId === 0) {
             throw new RuntimeException('Generated poster could not be imported into the media library.');
@@ -91,6 +79,41 @@ final class PosterService
         );
 
         return $poster;
+    }
+
+    private function duplicateAttachment(int $sourceId, int $postId): int
+    {
+        $source = get_attached_file($sourceId);
+        if (! is_string($source) || ! is_readable($source) || ! wp_attachment_is_image($sourceId)) {
+            return 0;
+        }
+
+        $uploads = wp_upload_dir();
+        if (! empty($uploads['error']) || empty($uploads['path'])) {
+            return 0;
+        }
+        if (! wp_mkdir_p((string) $uploads['path'])) {
+            return 0;
+        }
+
+        $filename = wp_unique_filename((string) $uploads['path'], 'dizzy-poster-' . wp_generate_uuid4() . '.png');
+        $destination = trailingslashit((string) $uploads['path']) . $filename;
+        if (! copy($source, $destination)) {
+            return 0;
+        }
+
+        $attachmentId = wp_insert_attachment([
+            'post_mime_type' => 'image/png',
+            'post_title' => get_the_title($postId) . ' poster',
+            'post_status' => 'inherit',
+        ], $destination, $postId, true);
+
+        if (is_wp_error($attachmentId)) {
+            wp_delete_file($destination);
+            return 0;
+        }
+
+        return (int) $attachmentId;
     }
 
     private function importMedia(string $url, int $postId): int

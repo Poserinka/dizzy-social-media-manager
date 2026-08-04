@@ -32,7 +32,7 @@ final class PosterSettings
 
     public function registerSettings(): void
     {
-        register_setting(self::GROUP, 'dizzy_social_openai_api_key', ['type' => 'string', 'sanitize_callback' => 'sanitize_text_field']);
+        delete_option('dizzy_social_openai_api_key');
         register_setting(self::GROUP, 'dizzy_social_watermark_image_id', ['type' => 'integer', 'sanitize_callback' => 'absint', 'default' => 0]);
         register_setting(self::GROUP, 'dizzy_social_watermark_alignment', ['type' => 'string', 'sanitize_callback' => [$this, 'sanitizeAlignment'], 'default' => 'top_center']);
         register_setting(self::GROUP, 'dizzy_social_watermark_offset_x', ['type' => 'number', 'sanitize_callback' => [$this, 'sanitizeOffset'], 'default' => 0]);
@@ -65,9 +65,6 @@ final class PosterSettings
             <h1><?php esc_html_e('Poster Settings', 'dizzy-social-media-manager'); ?></h1>
             <form method="post" action="<?php echo esc_url(admin_url('options.php')); ?>">
                 <?php settings_fields(self::GROUP); ?>
-                <h2><?php esc_html_e('AI Poster Settings', 'dizzy-social-media-manager'); ?></h2>
-                <table class="form-table"><tr><th><label for="dizzy-openai-key"><?php esc_html_e('OpenAI API Key', 'dizzy-social-media-manager'); ?></label></th><td><input id="dizzy-openai-key" type="password" class="regular-text" name="dizzy_social_openai_api_key" value="<?php echo esc_attr((string) get_option('dizzy_social_openai_api_key', '')); ?>"></td></tr></table>
-
                 <h2><?php esc_html_e('Logo / Watermark', 'dizzy-social-media-manager'); ?></h2>
                 <p><?php esc_html_e('These settings are applied proportionally to all social poster sizes.', 'dizzy-social-media-manager'); ?></p>
                 <table class="form-table">
