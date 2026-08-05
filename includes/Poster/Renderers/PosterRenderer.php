@@ -43,6 +43,7 @@ final class PosterRenderer
 
         $white = imagecolorallocate($canvas, 255, 255, 255);
         $title = trim((string) ($content['title'] ?? ''));
+        $title = function_exists('mb_strtoupper') ? mb_strtoupper($title, 'UTF-8') : strtoupper($title);
         $date = trim((string) ($content['date'] ?? ''));
         $hours = trim((string) ($content['hours'] ?? ''));
         $titleSize = max(10, (int) round($width * ((float) get_option('dizzy_social_title_size', 6.4) / 100)));
