@@ -39,25 +39,29 @@ final class PosterRenderer
 
         imagealphablending($canvas, true);
         $this->drawLayer($canvas, $width, $height);
-        $this->drawWatermark($canvas, $width, $height, (int) $format['dpi'] >= 300);
+        $this->drawLogo($canvas, $width, $height);
 
         $white = imagecolorallocate($canvas, 255, 255, 255);
         $muted = imagecolorallocate($canvas, 224, 224, 224);
         $title = trim((string) ($content['title'] ?? ''));
         $date = trim((string) ($content['date'] ?? ''));
         $venue = trim((string) ($content['venue'] ?? 'Jazzcafe Dizzy Rotterdam'));
-        $titleSize = max(32, (int) round($width * 0.064));
-        $dateSize = max(20, (int) round($width * 0.026));
+        $titleSize = max(10, (int) round($width * ((float) get_option('dizzy_social_title_size', 6.4) / 100)));
+        $dateSize = max(8, (int) round($width * ((float) get_option('dizzy_social_date_size', 2.6) / 100)));
         $titleX = $this->position($width, 'dizzy_social_title_x', 7.5);
         $titleY = $this->position($height, 'dizzy_social_title_y', 68) + $titleSize;
         $dateX = $this->position($width, 'dizzy_social_date_x', 7.5);
         $dateY = $this->position($height, 'dizzy_social_date_y', 88) + $dateSize;
-        $titleFont = $this->fontPath('dizzy_social_title_font_id');
-        $dateFont = $this->fontPath('dizzy_social_date_font_id');
+        $titleFont = $this->fontPath('dizzy_social_title_font');
+        $dateFont = $this->fontPath('dizzy_social_date_font');
 
-        $this->drawWrapped($canvas, $title, $titleX, $titleY, $width - $titleX - (int) round($width * 0.05), $titleSize, $white, $titleFont, 3);
-        $this->drawText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $white, $dateFont);
-        $this->drawText($canvas, $venue, $dateX, $dateY + (int) ($dateSize * 1.65), $dateSize, $muted, $dateFont);
+        if ((bool) get_option('dizzy_social_title_enabled', true)) {
+            $this->drawWrapped($canvas, $title, $titleX, $titleY, $width - $titleX - (int) round($width * 0.05), $titleSize, $white, $titleFont, 3);
+        }
+        if ((bool) get_option('dizzy_social_date_enabled', true)) {
+            $this->drawText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $white, $dateFont);
+            $this->drawText($canvas, $venue, $dateX, $dateY + (int) ($dateSize * 1.65), $dateSize, $muted, $dateFont);
+        }
 
         if (function_exists('imageresolution')) {
             imageresolution($canvas, (int) $format['dpi'], (int) $format['dpi']);
@@ -78,11 +82,10 @@ final class PosterRenderer
 
     private function fontPath(string $option): string
     {
-        $fontId = (int) get_option($option, 0);
-        $font = $fontId > 0 ? get_attached_file($fontId) : '';
-        if (is_string($font) && $font !== '' && is_readable($font)) {
-            return $font;
-        }
+        $filename = sanitize_file_name((string) get_option($option, ''));
+        $basePath = defined('DIZZY_EVENTS_PATH') ? (string) DIZZY_EVENTS_PATH : trailingslashit(WP_PLUGIN_DIR) . 'dizzy-events-manager/';
+        $font = $filename !== '' ? trailingslashit($basePath) . 'assets/fonts/' . $filename : '';
+        if ($font !== '' && is_readable($font) && in_array(strtolower((string) pathinfo($font, PATHINFO_EXTENSION)), ['ttf', 'otf'], true)) return $font;
         $fallback = (string) apply_filters('dizzy_social_poster_font_path', '', $option);
         return $fallback !== '' && is_readable($fallback) ? $fallback : '';
     }
@@ -150,12 +153,10 @@ final class PosterRenderer
         return (int) round(strlen($text) * imagefontwidth(5) * max(1, $size / imagefontheight(5)));
     }
 
-    private function drawWatermark($canvas, int $canvasWidth, int $canvasHeight, bool $isPrint): void
+    private function drawLogo($canvas, int $canvasWidth, int $canvasHeight): void
     {
-        $enabled = (bool) get_option($isPrint ? 'dizzy_social_watermark_print' : 'dizzy_social_watermark_social', ! $isPrint);
-        if (! $enabled) return;
-        $logoId = (int) get_option('dizzy_social_watermark_image_id', 0);
-        if ($logoId <= 0) $logoId = (int) get_theme_mod('custom_logo', 0);
+        if (! (bool) get_option('dizzy_social_logo_enabled', true)) return;
+        $logoId = (int) get_option('dizzy_social_logo_image_id', 0);
         $path = $logoId > 0 ? get_attached_file($logoId) : '';
         if (! is_string($path) || $path === '' || ! is_readable($path)) return;
         $bytes = file_get_contents($path);
@@ -163,12 +164,7 @@ final class PosterRenderer
         if ($logo === false) return;
         $logoWidth = imagesx($logo);
         $logoHeight = imagesy($logo);
-        $sizeMode = (string) get_option('dizzy_social_watermark_size_mode', 'scaled');
-        $targetWidth = match ($sizeMode) {
-            'original' => $logoWidth,
-            'custom' => (int) get_option('dizzy_social_watermark_custom_width', 400),
-            default => (int) round($canvasWidth * ((int) get_option('dizzy_social_watermark_scale', 35) / 100)),
-        };
+        $targetWidth = (int) round($canvasWidth * ((float) get_option('dizzy_social_logo_width', 25) / 100));
         $targetWidth = max(1, min($canvasWidth, $targetWidth));
         $targetHeight = min($canvasHeight, max(1, (int) round($logoHeight * ($targetWidth / $logoWidth))));
         $scaled = imagecreatetruecolor($targetWidth, $targetHeight);
@@ -177,33 +173,12 @@ final class PosterRenderer
         imagefill($scaled, 0, 0, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
         imagecopyresampled($scaled, $logo, 0, 0, 0, 0, $targetWidth, $targetHeight, $logoWidth, $logoHeight);
         imagedestroy($logo);
-        $this->applyOpacity($scaled, max(0, min(100, (int) get_option('dizzy_social_watermark_opacity', 85))));
-        $alignment = (string) get_option('dizzy_social_watermark_alignment', 'top_center');
-        [$vertical, $horizontal] = array_pad(explode('_', $alignment, 2), 2, 'center');
-        $x = match ($horizontal) {'left' => 0, 'right' => $canvasWidth - $targetWidth, default => (int) round(($canvasWidth - $targetWidth) / 2)};
-        $y = match ($vertical) {'top' => 0, 'bottom' => $canvasHeight - $targetHeight, default => (int) round(($canvasHeight - $targetHeight) / 2)};
-        $offsetX = (float) get_option('dizzy_social_watermark_offset_x', 0);
-        $offsetY = (float) get_option('dizzy_social_watermark_offset_y', 0);
-        if ((string) get_option('dizzy_social_watermark_offset_unit', 'percentages') === 'percentages') {
-            $offsetX = $canvasWidth * ($offsetX / 100);
-            $offsetY = $canvasHeight * ($offsetY / 100);
-        }
-        $x = max(0, min($canvasWidth - $targetWidth, $x + (int) round($offsetX)));
-        $y = max(0, min($canvasHeight - $targetHeight, $y + (int) round($offsetY)));
+        $x = $this->position($canvasWidth, 'dizzy_social_logo_x', 70);
+        $y = $this->position($canvasHeight, 'dizzy_social_logo_y', 5);
+        $x = max(0, min($canvasWidth - $targetWidth, $x));
+        $y = max(0, min($canvasHeight - $targetHeight, $y));
         imagecopy($canvas, $scaled, $x, $y, 0, 0, $targetWidth, $targetHeight);
         imagedestroy($scaled);
     }
 
-    private function applyOpacity($image, int $opacity): void
-    {
-        if ($opacity >= 100) return;
-        for ($y = 0; $y < imagesy($image); $y++) {
-            for ($x = 0; $x < imagesx($image); $x++) {
-                $rgba = imagecolorat($image, $x, $y);
-                $alpha = ($rgba >> 24) & 0x7F;
-                $visible = (127 - $alpha) * ($opacity / 100);
-                imagesetpixel($image, $x, $y, ($rgba & 0xFFFFFF) | ((127 - (int) round($visible)) << 24));
-            }
-        }
-    }
 }
