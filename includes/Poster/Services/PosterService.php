@@ -42,6 +42,7 @@ final class PosterService
             $this->renderer->render($attachmentId, $format, [
                 'title' => (string) ($data['title'] ?? ''),
                 'date' => (string) ($data['date'] ?? ''),
+                'hours' => (string) ($data['hours'] ?? ''),
             ]);
         } catch (Throwable $exception) {
             wp_delete_attachment($attachmentId, true);

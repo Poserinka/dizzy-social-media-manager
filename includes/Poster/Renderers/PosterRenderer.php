@@ -44,22 +44,31 @@ final class PosterRenderer
         $white = imagecolorallocate($canvas, 255, 255, 255);
         $title = trim((string) ($content['title'] ?? ''));
         $date = trim((string) ($content['date'] ?? ''));
+        $hours = trim((string) ($content['hours'] ?? ''));
         $titleSize = max(10, (int) round($width * ((float) get_option('dizzy_social_title_size', 6.4) / 100)));
         $dateSize = max(8, (int) round($width * ((float) get_option('dizzy_social_date_size', 2.6) / 100)));
+        $hoursSize = max(8, (int) round($width * ((float) get_option('dizzy_social_hours_size', 2.6) / 100)));
         $titleX = $this->position($width, 'dizzy_social_title_x', 7.5);
         $titleY = $this->position($height, 'dizzy_social_title_y', 68) + $titleSize;
         $dateX = $this->position($width, 'dizzy_social_date_x', 7.5);
-        $dateY = $this->position($height, 'dizzy_social_date_y', 88) + $dateSize;
+        $dateY = $this->position($height, 'dizzy_social_date_y', 86) + $dateSize;
+        $hoursX = $this->position($width, 'dizzy_social_hours_x', 7.5);
+        $hoursY = $this->position($height, 'dizzy_social_hours_y', 92) + $hoursSize;
         $titleFont = $this->fontPath('dizzy_social_title_font');
         $dateFont = $this->fontPath('dizzy_social_date_font');
+        $hoursFont = $this->fontPath('dizzy_social_hours_font');
         $titleAlign = $this->alignment('dizzy_social_title_align');
         $dateAlign = $this->alignment('dizzy_social_date_align');
+        $hoursAlign = $this->alignment('dizzy_social_hours_align');
 
         if ((bool) get_option('dizzy_social_title_enabled', true)) {
             $this->drawWrapped($canvas, $title, $titleX, $titleY, $this->availableWidth($width, $titleX, $titleAlign), $titleSize, $white, $titleFont, 3, $titleAlign);
         }
         if ((bool) get_option('dizzy_social_date_enabled', true)) {
             $this->drawAlignedText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $white, $dateFont, $dateAlign);
+        }
+        if ((bool) get_option('dizzy_social_hours_enabled', true)) {
+            $this->drawAlignedText($canvas, $hours, $hoursX, $hoursY, $hoursSize, $white, $hoursFont, $hoursAlign);
         }
 
         if (function_exists('imageresolution')) {

@@ -168,6 +168,7 @@ final class PosterAdmin
                 'format' => $formatKey,
                 'title' => get_the_title($postId),
                 'date' => $details['date'],
+                'hours' => $details['hours'],
             ]);
             update_post_meta($postId, '_dizzy_social_poster_background_id', $backgroundId);
         } catch (Throwable $exception) {
@@ -284,7 +285,7 @@ final class PosterAdmin
         exit;
     }
 
-    /** @return array{date:string} */
+    /** @return array{date:string,hours:string} */
     private function eventDetails(int $postId): array
     {
         global $wpdb;
@@ -297,8 +298,11 @@ final class PosterAdmin
             )
         );
         $date = is_string($start) && $start !== ''
-            ? wp_date('d F Y - H:i', strtotime($start), wp_timezone())
+            ? wp_date('d F Y', strtotime($start), wp_timezone())
             : '';
-        return ['date' => $date];
+        $hours = is_string($start) && $start !== ''
+            ? wp_date('H:i', strtotime($start), wp_timezone())
+            : '';
+        return ['date' => $date, 'hours' => $hours];
     }
 }
