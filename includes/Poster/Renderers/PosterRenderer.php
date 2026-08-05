@@ -42,10 +42,8 @@ final class PosterRenderer
         $this->drawLogo($canvas, $width, $height);
 
         $white = imagecolorallocate($canvas, 255, 255, 255);
-        $muted = imagecolorallocate($canvas, 224, 224, 224);
         $title = trim((string) ($content['title'] ?? ''));
         $date = trim((string) ($content['date'] ?? ''));
-        $venue = trim((string) ($content['venue'] ?? 'Jazzcafe Dizzy Rotterdam'));
         $titleSize = max(10, (int) round($width * ((float) get_option('dizzy_social_title_size', 6.4) / 100)));
         $dateSize = max(8, (int) round($width * ((float) get_option('dizzy_social_date_size', 2.6) / 100)));
         $titleX = $this->position($width, 'dizzy_social_title_x', 7.5);
@@ -54,13 +52,14 @@ final class PosterRenderer
         $dateY = $this->position($height, 'dizzy_social_date_y', 88) + $dateSize;
         $titleFont = $this->fontPath('dizzy_social_title_font');
         $dateFont = $this->fontPath('dizzy_social_date_font');
+        $titleAlign = $this->alignment('dizzy_social_title_align');
+        $dateAlign = $this->alignment('dizzy_social_date_align');
 
         if ((bool) get_option('dizzy_social_title_enabled', true)) {
-            $this->drawWrapped($canvas, $title, $titleX, $titleY, $width - $titleX - (int) round($width * 0.05), $titleSize, $white, $titleFont, 3);
+            $this->drawWrapped($canvas, $title, $titleX, $titleY, $this->availableWidth($width, $titleX, $titleAlign), $titleSize, $white, $titleFont, 3, $titleAlign);
         }
         if ((bool) get_option('dizzy_social_date_enabled', true)) {
-            $this->drawText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $white, $dateFont);
-            $this->drawText($canvas, $venue, $dateX, $dateY + (int) ($dateSize * 1.65), $dateSize, $muted, $dateFont);
+            $this->drawAlignedText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $white, $dateFont, $dateAlign);
         }
 
         if (function_exists('imageresolution')) {
@@ -78,6 +77,22 @@ final class PosterRenderer
     {
         $percent = max(0, min(100, (float) get_option($option, $default)));
         return (int) round($size * ($percent / 100));
+    }
+
+    private function alignment(string $option): string
+    {
+        $value = (string) get_option($option, 'left');
+        return in_array($value, ['left', 'center', 'right'], true) ? $value : 'left';
+    }
+
+    private function availableWidth(int $canvasWidth, int $anchorX, string $alignment): int
+    {
+        $margin = (int) round($canvasWidth * 0.04);
+        return max(1, match ($alignment) {
+            'center' => 2 * min(max(1, $anchorX - $margin), max(1, $canvasWidth - $anchorX - $margin)),
+            'right' => $anchorX - $margin,
+            default => $canvasWidth - $anchorX - $margin,
+        });
     }
 
     private function fontPath(string $option): string
@@ -98,12 +113,18 @@ final class PosterRenderer
         $bytes = file_get_contents($path);
         $layer = is_string($bytes) ? @imagecreatefromstring($bytes) : false;
         if ($layer === false) return;
-        imagealphablending($canvas, true);
-        imagecopyresampled($canvas, $layer, 0, 0, 0, 0, $width, $height, imagesx($layer), imagesy($layer));
+        $scaled = imagecreatetruecolor($width, $height);
+        imagealphablending($scaled, false);
+        imagesavealpha($scaled, true);
+        imagefill($scaled, 0, 0, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
+        imagecopyresampled($scaled, $layer, 0, 0, 0, 0, $width, $height, imagesx($layer), imagesy($layer));
         imagedestroy($layer);
+        imagealphablending($canvas, true);
+        imagecopy($canvas, $scaled, 0, 0, 0, 0, $width, $height);
+        imagedestroy($scaled);
     }
 
-    private function drawWrapped($image, string $text, int $x, int $y, int $maxWidth, int $size, int $color, string $font, int $maxLines): int
+    private function drawWrapped($image, string $text, int $anchorX, int $y, int $maxWidth, int $size, int $color, string $font, int $maxLines, string $alignment): int
     {
         $words = preg_split('/\s+/u', $text) ?: [];
         $lines = [];
@@ -120,10 +141,21 @@ final class PosterRenderer
         }
         if ($line !== '') $lines[] = $line;
         foreach (array_slice($lines, 0, $maxLines) as $lineText) {
-            $this->drawText($image, $lineText, $x, $y, $size, $color, $font);
+            $this->drawAlignedText($image, $lineText, $anchorX, $y, $size, $color, $font, $alignment);
             $y += (int) round($size * 1.25);
         }
         return $y;
+    }
+
+    private function drawAlignedText($image, string $text, int $anchorX, int $y, int $size, int $color, string $font, string $alignment): void
+    {
+        $width = $this->textWidth($text, $size, $font);
+        $x = match ($alignment) {
+            'center' => $anchorX - (int) round($width / 2),
+            'right' => $anchorX - $width,
+            default => $anchorX,
+        };
+        $this->drawText($image, $text, max(0, $x), $y, $size, $color, $font);
     }
 
     private function drawText($image, string $text, int $x, int $y, int $size, int $color, string $font): void

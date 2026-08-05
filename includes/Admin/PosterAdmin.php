@@ -168,7 +168,6 @@ final class PosterAdmin
                 'format' => $formatKey,
                 'title' => get_the_title($postId),
                 'date' => $details['date'],
-                'venue' => $details['venue'],
             ]);
             update_post_meta($postId, '_dizzy_social_poster_background_id', $backgroundId);
         } catch (Throwable $exception) {
@@ -285,7 +284,7 @@ final class PosterAdmin
         exit;
     }
 
-    /** @return array{date:string,venue:string} */
+    /** @return array{date:string} */
     private function eventDetails(int $postId): array
     {
         global $wpdb;
@@ -300,11 +299,6 @@ final class PosterAdmin
         $date = is_string($start) && $start !== ''
             ? wp_date('d F Y - H:i', strtotime($start), wp_timezone())
             : '';
-        $venues = wp_get_post_terms($postId, Config::TAX_VENUE, ['fields' => 'names']);
-        $venue = ! is_wp_error($venues) && isset($venues[0])
-            ? (string) $venues[0]
-            : 'Jazzcafe Dizzy Rotterdam';
-
-        return ['date' => $date, 'venue' => $venue];
+        return ['date' => $date];
     }
 }
