@@ -30,7 +30,7 @@ final class PosterRepository
                 'attachment_id' => $data['attachment_id'] ?? null,
                 'prompt' => $data['prompt'] ?? '',
                 'image_url' => $data['image_url'] ?? '',
-                'provider' => $data['provider'] ?? 'ai',
+                'provider' => $data['provider'] ?? 'local',
                 'status' => $data['status'] ?? 'draft',
                 'created_at' => $now,
                 'updated_at' => $now,

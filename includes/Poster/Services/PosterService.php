@@ -8,7 +8,6 @@ use Dizzy\SocialMedia\Poster\Models\Poster;
 use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
 use Dizzy\SocialMedia\Poster\Renderers\PosterRenderer;
 use Dizzy\SocialMedia\Poster\Support\PosterFormats;
-use Dizzy\SocialMedia\Poster\Support\PosterTemplates;
 use RuntimeException;
 use Throwable;
 
@@ -25,9 +24,7 @@ final class PosterService
     public function create(array $data): Poster
     {
         $formatKey = PosterFormats::sanitize((string) ($data['format'] ?? 'social_square'));
-        $templateKey = PosterTemplates::sanitize((string) ($data['template'] ?? 'classic'));
         $format = PosterFormats::get($formatKey);
-        $template = PosterTemplates::get($templateKey);
         $sourceAttachmentId = (int) ($data['source_attachment_id'] ?? 0);
         $imageUrl = isset($data['image_url']) && is_string($data['image_url'])
             ? trim($data['image_url'])
@@ -42,7 +39,7 @@ final class PosterService
         }
 
         try {
-            $this->renderer->render($attachmentId, $format, $template, [
+            $this->renderer->render($attachmentId, $format, [
                 'title' => (string) ($data['title'] ?? ''),
                 'date' => (string) ($data['date'] ?? ''),
                 'venue' => (string) ($data['venue'] ?? ''),
@@ -53,7 +50,6 @@ final class PosterService
         }
 
         update_post_meta($attachmentId, '_dizzy_poster_format', $formatKey);
-        update_post_meta($attachmentId, '_dizzy_poster_template', $templateKey);
         update_post_meta($attachmentId, '_dizzy_poster_dpi', (int) $format['dpi']);
 
         $localUrl = wp_get_attachment_url($attachmentId);
