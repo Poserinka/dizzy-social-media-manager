@@ -15,6 +15,9 @@ defined('ABSPATH') || exit;
 
 final class PosterAdmin
 {
+    /** @var array{post_id:int,background_id:int,format:string}|null */
+    private ?array $pendingGeneration = null;
+
     public function __construct(
         private readonly PosterService $service,
         private readonly PosterRepository $repository,
@@ -37,6 +40,9 @@ final class PosterAdmin
             'admin_post_dizzy_social_export_poster',
             [$this, 'export']
         );
+
+        add_action('save_post_' . Config::POST_TYPE_EVENT, [$this, 'queueGenerationAfterSave'], 30, 3);
+        add_filter('redirect_post_location', [$this, 'addGenerationToRedirect'], 20, 2);
     }
 
     public function addMetaBox(): void
@@ -58,6 +64,11 @@ final class PosterAdmin
         $status = isset($_GET['dizzy_social_poster_status']) && is_string($_GET['dizzy_social_poster_status'])
             ? sanitize_key(wp_unslash($_GET['dizzy_social_poster_status']))
             : '';
+        $autoGenerate = isset($_GET['dizzy_social_generate_after_save']) && $_GET['dizzy_social_generate_after_save'] === '1';
+        $pendingBackgroundId = isset($_GET['dizzy_social_background_id']) ? absint($_GET['dizzy_social_background_id']) : 0;
+        $pendingFormat = isset($_GET['dizzy_social_format']) && is_string($_GET['dizzy_social_format'])
+            ? PosterFormats::sanitize(sanitize_key(wp_unslash($_GET['dizzy_social_format'])))
+            : 'social_square';
 
         wp_nonce_field(
             'dizzy_social_generate_poster_' . $post->ID,
@@ -69,6 +80,9 @@ final class PosterAdmin
         $backgroundId = (int) get_post_meta($post->ID, '_dizzy_social_poster_background_id', true);
         if ($backgroundId <= 0) {
             $backgroundId = (int) get_post_thumbnail_id($post->ID);
+        }
+        if ($autoGenerate && $pendingBackgroundId > 0) {
+            $backgroundId = $pendingBackgroundId;
         }
         $backgroundUrl = $backgroundId > 0 ? (string) wp_get_attachment_image_url($backgroundId, 'medium') : '';
 
@@ -86,7 +100,7 @@ final class PosterAdmin
         echo '<p><label for="dizzy_poster_format"><strong>' . esc_html__('Output format', 'dizzy-social-media-manager') . '</strong></label><br>';
         echo '<select id="dizzy_poster_format" name="format" style="width:100%">';
         foreach (PosterFormats::all() as $key => $format) {
-            echo '<option value="' . esc_attr($key) . '">' . esc_html($format['label']) . '</option>';
+            echo '<option value="' . esc_attr($key) . '" ' . selected($pendingFormat, $key, false) . '>' . esc_html($format['label']) . '</option>';
         }
         echo '</select></p>';
 
@@ -123,6 +137,48 @@ final class PosterAdmin
         $featuredId = (int) get_post_thumbnail_id($post->ID);
         $featuredUrl = $featuredId > 0 ? (string) wp_get_attachment_image_url($featuredId, 'medium') : '';
         echo '<script>(()=>{const select=document.getElementById("dizzy_select_poster_background"),featured=document.getElementById("dizzy_use_featured_background"),generate=document.getElementById("dizzy_generate_poster"),input=document.getElementById("dizzy_poster_background_id"),preview=document.getElementById("dizzy_poster_background_preview");if(!select||!generate||!input||!preview)return;const show=(id,url)=>{input.value=id;preview.innerHTML=url?"<img src=\""+url.replace(/\"/g,"&quot;")+"\" alt=\"\" style=\"display:block;width:100%;max-width:300px;height:auto\">":""};select.addEventListener("click",()=>{const frame=wp.media({title:"' . esc_js(__('Select poster background', 'dizzy-social-media-manager')) . '",button:{text:"' . esc_js(__('Use this image', 'dizzy-social-media-manager')) . '"},library:{type:"image"},multiple:false});frame.on("select",()=>{const image=frame.state().get("selection").first().toJSON();show(image.id,image.sizes&&image.sizes.medium?image.sizes.medium.url:image.url)});frame.open()});featured?.addEventListener("click",()=>show(' . $featuredId . ',"' . esc_js($featuredUrl) . '"));generate.addEventListener("click",()=>{generate.disabled=true;generate.textContent="' . esc_js(__('Generating...', 'dizzy-social-media-manager')) . '";const form=document.createElement("form");form.method="post";form.action="' . esc_js(admin_url('admin-post.php')) . '";const values={action:"dizzy_social_generate_poster",post_id:"' . (int) $post->ID . '",dizzy_poster_nonce:document.querySelector("[name=dizzy_poster_nonce]")?.value||"",background_id:input.value,format:document.getElementById("dizzy_poster_format")?.value||"social_square"};Object.entries(values).forEach(([name,value])=>{const field=document.createElement("input");field.type="hidden";field.name=name;field.value=value;form.appendChild(field)});document.body.appendChild(form);form.submit()})})();</script>';
+        echo '<script>(()=>{const generate=document.getElementById("dizzy_generate_poster");if(!generate)return;const auto=' . ($autoGenerate ? 'true' : 'false') . ';if(auto){window.setTimeout(()=>generate.click(),250);return}generate.addEventListener("click",event=>{const postForm=document.getElementById("post"),save=document.getElementById("publish")||document.getElementById("save-post");if(!postForm||!save)return;event.preventDefault();event.stopImmediatePropagation();generate.disabled=true;generate.textContent="' . esc_js(__('Saving event...', 'dizzy-social-media-manager')) . '";const background=document.getElementById("dizzy_poster_background_id"),format=document.getElementById("dizzy_poster_format"),values={dizzy_social_generate_after_save:"1",dizzy_social_pending_background_id:background?.value||"0",dizzy_social_pending_format:format?.value||"social_square"};Object.entries(values).forEach(([name,value])=>{let field=postForm.querySelector("[name="+name+"]");if(!field){field=document.createElement("input");field.type="hidden";field.name=name;postForm.appendChild(field)}field.value=value});save.click()},true)})();</script>';
+    }
+
+    public function queueGenerationAfterSave(int $postId, WP_Post $post, bool $update): void
+    {
+        $nonce = isset($_POST['dizzy_poster_nonce']) && is_string($_POST['dizzy_poster_nonce'])
+            ? sanitize_text_field(wp_unslash($_POST['dizzy_poster_nonce']))
+            : '';
+
+        if (
+            ! isset($_POST['dizzy_social_generate_after_save'])
+            || $_POST['dizzy_social_generate_after_save'] !== '1'
+            || $nonce === ''
+            || ! wp_verify_nonce($nonce, 'dizzy_social_generate_poster_' . $postId)
+            || (defined('DOING_AUTOSAVE') && DOING_AUTOSAVE)
+            || ! current_user_can('edit_post', $postId)
+        ) {
+            return;
+        }
+
+        $this->pendingGeneration = [
+            'post_id' => $postId,
+            'background_id' => isset($_POST['dizzy_social_pending_background_id']) ? absint($_POST['dizzy_social_pending_background_id']) : 0,
+            'format' => PosterFormats::sanitize(
+                isset($_POST['dizzy_social_pending_format'])
+                    ? sanitize_key(wp_unslash((string) $_POST['dizzy_social_pending_format']))
+                    : 'social_square'
+            ),
+        ];
+    }
+
+    public function addGenerationToRedirect(string $location, int $postId): string
+    {
+        if ($this->pendingGeneration === null || $this->pendingGeneration['post_id'] !== $postId) {
+            return $location;
+        }
+
+        return add_query_arg([
+            'dizzy_social_generate_after_save' => '1',
+            'dizzy_social_background_id' => $this->pendingGeneration['background_id'],
+            'dizzy_social_format' => $this->pendingGeneration['format'],
+        ], $location);
     }
 
     public function generate(): void
