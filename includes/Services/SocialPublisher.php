@@ -6,13 +6,18 @@ namespace Dizzy\SocialMedia\Services;
 
 use Dizzy\SocialMedia\Core\Config;
 use Dizzy\SocialMedia\Poster\Repositories\PosterRepository;
+use Dizzy\SocialMedia\Poster\Services\PosterService;
 use WP_Post;
+use Throwable;
 
 defined('ABSPATH') || exit;
 
 final class SocialPublisher
 {
-    public function __construct(private PosterRepository $posters) {}
+    public function __construct(
+        private PosterRepository $posters,
+        private PosterService $posterService,
+    ) {}
 
     public function register(): void
     {
@@ -33,18 +38,59 @@ final class SocialPublisher
         $token=(string)get_option('dizzy_social_page_token','');$page=(string)get_option('dizzy_social_page_id','');$ig=(string)get_option('dizzy_social_instagram_id','');
         if($token===''||$page===''){ $this->log('Event '.$postId.': missing account connection.');return; }
         $version=preg_replace('/[^v0-9.]/','',(string)get_option('dizzy_social_graph_version','v21.0'));$base='https://graph.facebook.com/'.$version.'/';
-        $poster=$this->posters->findByEvent($postId);$image=$poster?->imageUrl?:get_the_post_thumbnail_url($postId,'full');$ok=true;
-        if((bool)get_option('dizzy_social_autopost_facebook',true)){
+        $facebookEnabled=(bool)get_option('dizzy_social_autopost_facebook',true);
+        $instagramEnabled=(bool)get_option('dizzy_social_autopost_instagram',true);
+        $facebookType=(string)get_option('dizzy_social_facebook_type','poster');
+        $instagramType=(string)get_option('dizzy_social_instagram_type','poster');
+        $poster=$this->posters->findByEvent($postId);
+        $needsPoster=($facebookEnabled&&$facebookType==='poster')||($instagramEnabled&&$instagramType==='poster');
+        if($needsPoster&&(!$poster||$poster->imageUrl===''))$poster=$this->generatePoster($postId);
+        if($needsPoster&&!$poster){$this->log('Event '.$postId.': generated poster is required, but automatic poster generation failed. Auto post stopped.');return;}
+        $posterImage=$poster?->imageUrl?:'';
+        $featuredImage=(string)(get_the_post_thumbnail_url($postId,'full')?:'');
+        $facebookImage=$facebookType==='poster'?$posterImage:$featuredImage;
+        $instagramImage=$instagramType==='poster'?$posterImage:$featuredImage;
+        $ok=true;
+        if($facebookEnabled){
             $body=['message'=>$this->message($postId,'facebook'),'access_token'=>$token];
-            $endpoint=$base.rawurlencode($page).'/feed';if(is_string($image)&&$image!==''){$endpoint=$base.rawurlencode($page).'/photos';$body=['caption'=>$body['message'],'url'=>$image,'access_token'=>$token];}
+            $endpoint=$base.rawurlencode($page).'/feed';if($facebookImage!==''){$endpoint=$base.rawurlencode($page).'/photos';$body=['caption'=>$body['message'],'url'=>$facebookImage,'access_token'=>$token];}
             $ok=$this->request($endpoint,$body,'Facebook',$postId)&&$ok;
         }
-        if((bool)get_option('dizzy_social_autopost_instagram',true)&&$ig!==''&&is_string($image)&&$image!==''){
-            $creation=$this->json($base.rawurlencode($ig).'/media',['image_url'=>$image,'caption'=>$this->message($postId,'instagram'),'access_token'=>$token]);$creationId=(string)($creation['id']??'');
+        if($instagramEnabled&&$ig!==''&&$instagramImage!==''){
+            $creation=$this->json($base.rawurlencode($ig).'/media',['image_url'=>$instagramImage,'caption'=>$this->message($postId,'instagram'),'access_token'=>$token]);$creationId=(string)($creation['id']??'');
             $published=$creationId!==''?$this->json($base.rawurlencode($ig).'/media_publish',['creation_id'=>$creationId,'access_token'=>$token]):[];
             $igOk=!empty($published['id']);$this->log('Event '.$postId.': Instagram '.($igOk?'published.':'failed.'));$ok=$igOk&&$ok;
         }
         if($ok)update_post_meta($postId,'_dizzy_social_autoposted',current_time('mysql',true));
+    }
+
+    private function generatePoster(int $postId): ?\Dizzy\SocialMedia\Poster\Models\Poster
+    {
+        $backgroundId=(int)get_post_meta($postId,'_dizzy_social_poster_background_id',true);
+        if($backgroundId<=0||!wp_attachment_is_image($backgroundId))$backgroundId=(int)get_post_thumbnail_id($postId);
+        if($backgroundId<=0||!wp_attachment_is_image($backgroundId)){
+            $this->log('Event '.$postId.': automatic poster generation failed because no featured image is available.');
+            return null;
+        }
+        global $wpdb;
+        $start=$wpdb->get_var($wpdb->prepare("SELECT start_datetime FROM {$wpdb->prefix}dizzy_event_occurrences WHERE event_id=%d AND status=%s ORDER BY start_datetime LIMIT 1",$postId,'publish'));
+        $timestamp=is_string($start)?strtotime($start):false;
+        try{
+            $poster=$this->posterService->create([
+                'event_id'=>$postId,
+                'source_attachment_id'=>$backgroundId,
+                'format'=>'social_square',
+                'title'=>get_the_title($postId),
+                'date'=>$timestamp!==false?wp_date('d F Y',$timestamp,wp_timezone()):'',
+                'hours'=>$timestamp!==false?wp_date('H:i',$timestamp,wp_timezone()):'',
+            ]);
+            update_post_meta($postId,'_dizzy_social_poster_background_id',$backgroundId);
+            $this->log('Event '.$postId.': social_square poster generated automatically.');
+            return $poster;
+        }catch(Throwable $exception){
+            $this->log('Event '.$postId.': automatic poster generation failed: '.$exception->getMessage());
+            return null;
+        }
     }
 
     private function message(int $postId,string $platform): string

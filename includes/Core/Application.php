@@ -37,7 +37,10 @@ final class Application
         $accounts = new AccountsAdmin();
         $autopost = new AutoPostAdmin();
         $templates = new TemplatesAdmin();
-        $publisher = new SocialPublisher($container->get(PosterRepository::class));
+        $publisher = new SocialPublisher(
+            $container->get(PosterRepository::class),
+            $container->get(PosterService::class),
+        );
 
         $dashboard->register();
         $poster->register();
@@ -48,3 +51,4 @@ final class Application
         $publisher->register();
     }
 }
+
