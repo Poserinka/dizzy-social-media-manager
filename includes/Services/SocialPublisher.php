@@ -51,7 +51,9 @@ final class SocialPublisher
     {
         global $wpdb;$start=$wpdb->get_var($wpdb->prepare("SELECT start_datetime FROM {$wpdb->prefix}dizzy_event_occurrences WHERE event_id=%d AND status=%s ORDER BY start_datetime LIMIT 1",$postId,'publish'));
         $venues=wp_get_post_terms($postId,Config::TAX_VENUE,['fields'=>'names']);$tags=['{post_title}'=>get_the_title($postId),'{post_excerpt}'=>wp_trim_words(wp_strip_all_tags((string)get_post_field('post_content',$postId)),45,'...'),'{post_url}'=>get_permalink($postId),'{event_date}'=>is_string($start)?wp_date('d F Y - H:i',strtotime($start),wp_timezone()):'','{venue}'=>!is_wp_error($venues)&&isset($venues[0])?(string)$venues[0]:''];
-        $text=strtr((string)get_option('dizzy_social_'.$platform.'_message','{post_title}\n\n{post_excerpt}\n\n{post_url}'),$tags);$limit=$platform==='instagram'?2200:63206;
+        $text=strtr((string)get_option('dizzy_social_'.$platform.'_message','{post_title}\n\n{post_excerpt}\n\n{post_url}'),$tags);
+        $text=str_replace(["\\r\\n","\\n","\\r"],"\n",$text);
+        $limit=$platform==='instagram'?2200:63206;
         return (bool)get_option('dizzy_social_'.$platform.'_trim',true)?mb_substr($text,0,$limit):$text;
     }
 
@@ -59,3 +61,4 @@ final class SocialPublisher
     private function json(string $url,array $body): array { $r=wp_remote_post($url,['timeout'=>30,'body'=>$body]);if(is_wp_error($r))return []; $d=json_decode(wp_remote_retrieve_body($r),true);return is_array($d)?$d:[]; }
     private function log(string $message): void { if(!(bool)get_option('dizzy_social_autopost_log_enabled',true))return;$logs=(array)get_option('dizzy_social_autopost_logs',[]);$logs[]=current_time('mysql').' '.$message;update_option('dizzy_social_autopost_logs',array_slice($logs,-100),false); }
 }
+
