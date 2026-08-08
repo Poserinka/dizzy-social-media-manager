@@ -79,13 +79,13 @@ final class SocialPublisher
             $poster=$this->posterService->create([
                 'event_id'=>$postId,
                 'source_attachment_id'=>$backgroundId,
-                'format'=>'social_square',
+                'format'=>'social_portrait',
                 'title'=>get_the_title($postId),
                 'date'=>$timestamp!==false?wp_date('d F Y',$timestamp,wp_timezone()):'',
                 'hours'=>$timestamp!==false?wp_date('H:i',$timestamp,wp_timezone()):'',
             ]);
             update_post_meta($postId,'_dizzy_social_poster_background_id',$backgroundId);
-            $this->log('Event '.$postId.': social_square poster generated automatically.');
+            $this->log('Event '.$postId.': social_portrait (1080x1350) poster generated automatically.');
             return $poster;
         }catch(Throwable $exception){
             $this->log('Event '.$postId.': automatic poster generation failed: '.$exception->getMessage());
