@@ -58,7 +58,18 @@ final class SocialPublisher
         }
         if($instagramEnabled&&$ig!==''&&$instagramImage!==''){
             $creation=$this->json($base.rawurlencode($ig).'/media',['image_url'=>$instagramImage,'caption'=>$this->message($postId,'instagram'),'access_token'=>$token]);$creationId=(string)($creation['id']??'');
-            $published=$creationId!==''?$this->json($base.rawurlencode($ig).'/media_publish',['creation_id'=>$creationId,'access_token'=>$token]):[];
+            if($creationId===''){
+                $this->log('Event '.$postId.': Instagram container creation failed. '.$this->metaError($creation));
+                $ok=false;
+            }else{
+            $container=$this->waitForContainer($base,$creationId,$token);
+            $statusCode=(string)($container['status_code']??'');
+            if($statusCode!=='FINISHED'&&$statusCode!=='PUBLISHED'){
+                $status=(string)($container['status']??'Container did not become ready.');
+                $this->log('Event '.$postId.': Instagram container '.$statusCode.'. '.$status.' '.$this->metaError($container));
+                $ok=false;
+            }else{
+            $published=$this->json($base.rawurlencode($ig).'/media_publish',['creation_id'=>$creationId,'access_token'=>$token]);
             $mediaId=(string)($published['id']??'');
             $igOk=$mediaId!=='';
             if($igOk){
@@ -66,9 +77,11 @@ final class SocialPublisher
                 $permalink=isset($media['permalink'])&&is_string($media['permalink'])?$media['permalink']:'';
                 $this->log('Event '.$postId.': Instagram published. Media ID: '.$mediaId.($permalink!==''?' Permalink: '.$permalink:''));
             }else{
-                $this->log('Event '.$postId.': Instagram failed.');
+                $this->log('Event '.$postId.': Instagram publish failed. '.$this->metaError($published));
             }
             $ok=$igOk&&$ok;
+            }
+            }
         }
         if($ok)update_post_meta($postId,'_dizzy_social_autoposted',current_time('mysql',true));
     }
@@ -126,7 +139,31 @@ final class SocialPublisher
         return trim($text);
     }
 
-    private function request(string $url,array $body,string $platform,int $postId): bool { $data=$this->json($url,$body);$ok=!empty($data['id']);$this->log('Event '.$postId.': '.$platform.' '.($ok?'published.':'failed.'));return $ok; }
+    private function waitForContainer(string $base,string $creationId,string $token): array
+    {
+        $status=[];
+        for($attempt=0;$attempt<6;$attempt++){
+            $status=$this->getJson($base.rawurlencode($creationId).'?fields=status_code,status&access_token='.rawurlencode($token));
+            $code=(string)($status['status_code']??'');
+            if(in_array($code,['FINISHED','PUBLISHED','ERROR','EXPIRED'],true))return $status;
+            if($attempt<5)sleep(2);
+        }
+        return $status;
+    }
+
+    private function metaError(array $data): string
+    {
+        $error=isset($data['error'])&&is_array($data['error'])?$data['error']:[];
+        if($error===[])return '';
+        $parts=[];
+        if(isset($error['code']))$parts[]='Meta code '.(string)$error['code'];
+        if(isset($error['error_subcode']))$parts[]='subcode '.(string)$error['error_subcode'];
+        if(isset($error['message'])&&is_string($error['message']))$parts[]=$error['message'];
+        if(isset($error['error_user_msg'])&&is_string($error['error_user_msg']))$parts[]=$error['error_user_msg'];
+        return implode(' - ',$parts);
+    }
+
+    private function request(string $url,array $body,string $platform,int $postId): bool { $data=$this->json($url,$body);$ok=!empty($data['id']);$this->log('Event '.$postId.': '.$platform.' '.($ok?'published.':'failed. '.$this->metaError($data)));return $ok; }
     private function json(string $url,array $body): array { $r=wp_remote_post($url,['timeout'=>30,'body'=>$body]);if(is_wp_error($r))return []; $d=json_decode(wp_remote_retrieve_body($r),true);return is_array($d)?$d:[]; }
     private function getJson(string $url): array { $r=wp_remote_get($url,['timeout'=>15]);if(is_wp_error($r))return []; $d=json_decode(wp_remote_retrieve_body($r),true);return is_array($d)?$d:[]; }
     private function log(string $message): void { if(!(bool)get_option('dizzy_social_autopost_log_enabled',true))return;$logs=(array)get_option('dizzy_social_autopost_logs',[]);$logs[]=current_time('mysql').' '.$message;update_option('dizzy_social_autopost_logs',array_slice($logs,-100),false); }
