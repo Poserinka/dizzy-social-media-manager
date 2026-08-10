@@ -3,7 +3,7 @@
  * Plugin Name: Dizzy Social Media Manager
  * Plugin URI: https://github.com/Poserinka/dizzy-social-media-manager
  * Description: Poster generation and social media exports for Dizzy Events Manager.
- * Version: 1.9.3
+ * Version: 1.9.4
  * Author: Poserinka Design
  * Text Domain: dizzy-social-media-manager
  * Requires PHP: 8.2
@@ -15,7 +15,7 @@ declare(strict_types=1);
 
 defined('ABSPATH') || exit;
 
-define('DIZZY_SOCIAL_VERSION', '1.9.3');
+define('DIZZY_SOCIAL_VERSION', '1.9.4');
 define('DIZZY_SOCIAL_PATH', plugin_dir_path(__FILE__));
 define('DIZZY_SOCIAL_URL', plugin_dir_url(__FILE__));
 

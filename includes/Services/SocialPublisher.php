@@ -105,11 +105,25 @@ final class SocialPublisher
     private function message(int $postId,string $platform): string
     {
         global $wpdb;$start=$wpdb->get_var($wpdb->prepare("SELECT start_datetime FROM {$wpdb->prefix}dizzy_event_occurrences WHERE event_id=%d AND status=%s ORDER BY start_datetime LIMIT 1",$postId,'publish'));
-        $venues=wp_get_post_terms($postId,Config::TAX_VENUE,['fields'=>'names']);$tags=['{post_title}'=>get_the_title($postId),'{post_excerpt}'=>wp_trim_words(wp_strip_all_tags((string)get_post_field('post_content',$postId)),45,'...'),'{post_url}'=>get_permalink($postId),'{event_date}'=>is_string($start)?wp_date('d F Y - H:i',strtotime($start),wp_timezone()):'','{venue}'=>!is_wp_error($venues)&&isset($venues[0])?(string)$venues[0]:''];
+        $venues=wp_get_post_terms($postId,Config::TAX_VENUE,['fields'=>'names']);$tags=['{post_title}'=>get_the_title($postId),'{post_excerpt}'=>$this->eventDescription($postId),'{post_url}'=>get_permalink($postId),'{event_date}'=>is_string($start)?wp_date('d F Y - H:i',strtotime($start),wp_timezone()):'','{venue}'=>!is_wp_error($venues)&&isset($venues[0])?(string)$venues[0]:''];
         $text=strtr((string)get_option('dizzy_social_'.$platform.'_message','{post_title}\n\n{post_excerpt}\n\n{post_url}'),$tags);
         $text=str_replace(["\\r\\n","\\n","\\r"],"\n",$text);
         $limit=$platform==='instagram'?2200:63206;
         return (bool)get_option('dizzy_social_'.$platform.'_trim',true)?mb_substr($text,0,$limit):$text;
+    }
+
+    private function eventDescription(int $postId): string
+    {
+        $excerpt=(string)get_post_field('post_excerpt',$postId);
+        $content=$excerpt!==''?$excerpt:(string)get_post_field('post_content',$postId);
+        $content=strip_shortcodes($content);
+        $content=preg_replace('/<br\s*\/?>/i',"\n",$content)??$content;
+        $content=preg_replace('/<\/(p|div|li|h[1-6])>/i',"\n\n",$content)??$content;
+        $text=html_entity_decode(wp_strip_all_tags($content),ENT_QUOTES,get_bloginfo('charset')?:'UTF-8');
+        $text=preg_replace('/[ \t]+/u',' ',$text)??$text;
+        $text=preg_replace('/ *\R */u',"\n",$text)??$text;
+        $text=preg_replace('/\n{3,}/u',"\n\n",$text)??$text;
+        return trim($text);
     }
 
     private function request(string $url,array $body,string $platform,int $postId): bool { $data=$this->json($url,$body);$ok=!empty($data['id']);$this->log('Event '.$postId.': '.$platform.' '.($ok?'published.':'failed.'));return $ok; }
