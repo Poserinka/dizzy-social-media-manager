@@ -25,7 +25,6 @@ final class SocialPublisher
         add_action('dizzy_social_publish_event',[$this,'publish']);
         add_action('save_post_'.Config::POST_TYPE_EVENT,[$this,'manualPublishAfterSave'],999,3);
         add_action('admin_footer-post.php',[$this,'renderManualButtons']);
-        add_action('admin_footer-post-new.php',[$this,'renderManualButtons']);
         add_action('admin_notices',[$this,'manualPublishNotice']);
     }
 
@@ -97,7 +96,8 @@ final class SocialPublisher
     public function renderManualButtons(): void
     {
         $screen=function_exists('get_current_screen')?get_current_screen():null;
-        if(!$screen||$screen->post_type!==Config::POST_TYPE_EVENT||(bool)get_option('dizzy_social_autopost_enabled',false)||!current_user_can('edit_posts'))return;
+        global $post;
+        if(!$screen||$screen->post_type!==Config::POST_TYPE_EVENT||!$post instanceof WP_Post||$post->ID<=0||$post->post_status==='auto-draft'||(bool)get_option('dizzy_social_autopost_enabled',false)||!current_user_can('edit_post',$post->ID))return;
         $nonce=wp_create_nonce('dizzy_social_manual_publish');
         ?>
         <style>.dizzy-editor-header-actions .dizzy-social-manual{white-space:nowrap}.dizzy-editor-header-actions{flex-wrap:wrap}</style>
