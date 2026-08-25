@@ -122,7 +122,7 @@ final class PosterAdmin
         if ($poster && $poster->imageUrl !== '') {
             echo '<img src="' . esc_url($poster->imageUrl) . '" alt="">';
         }
-        echo '</div><div class="dizzy-poster-actions">';
+        echo '</div></div><div class="dizzy-poster-actions">';
         if ($poster && $poster->imageUrl !== '') {
             echo '<a class="button button-secondary" href="' . esc_url($poster->imageUrl) . '" download>' . esc_html__('Download latest poster', 'dizzy-social-media-manager') . '</a>';
 
@@ -141,7 +141,7 @@ final class PosterAdmin
         }
 
         echo '<button type="button" id="dizzy_generate_poster" class="button button-primary">' . esc_html__('Generate Poster', 'dizzy-social-media-manager') . '</button>';
-        echo '</div></div></div></div>';
+        echo '</div></div></div>';
         $featuredId = (int) get_post_thumbnail_id($post->ID);
         $featuredUrl = $featuredId > 0 ? (string) wp_get_attachment_image_url($featuredId, 'medium') : '';
         echo '<script>(()=>{const select=document.getElementById("dizzy_select_poster_background"),featured=document.getElementById("dizzy_use_featured_background"),generate=document.getElementById("dizzy_generate_poster"),input=document.getElementById("dizzy_poster_background_id"),preview=document.getElementById("dizzy_poster_background_preview");if(!select||!generate||!input||!preview)return;const show=(id,url)=>{input.value=id;preview.innerHTML=url?"<img src=\""+url.replace(/\"/g,"&quot;")+"\" alt=\"\" style=\"display:block;width:100%;max-width:300px;height:auto\">":""};select.addEventListener("click",()=>{const frame=wp.media({title:"' . esc_js(__('Select poster background', 'dizzy-social-media-manager')) . '",button:{text:"' . esc_js(__('Use this image', 'dizzy-social-media-manager')) . '"},library:{type:"image"},multiple:false});frame.on("select",()=>{const image=frame.state().get("selection").first().toJSON();show(image.id,image.sizes&&image.sizes.medium?image.sizes.medium.url:image.url)});frame.open()});featured?.addEventListener("click",()=>show(' . $featuredId . ',"' . esc_js($featuredUrl) . '"));generate.addEventListener("click",()=>{generate.disabled=true;generate.textContent="' . esc_js(__('Generating...', 'dizzy-social-media-manager')) . '";const form=document.createElement("form");form.method="post";form.action="' . esc_js(admin_url('admin-post.php')) . '";const values={action:"dizzy_social_generate_poster",post_id:"' . (int) $post->ID . '",dizzy_poster_nonce:document.querySelector("[name=dizzy_poster_nonce]")?.value||"",background_id:input.value,format:document.getElementById("dizzy_poster_format")?.value||"social_square"};Object.entries(values).forEach(([name,value])=>{const field=document.createElement("input");field.type="hidden";field.name=name;field.value=value;form.appendChild(field)});document.body.appendChild(form);form.submit()})})();</script>';
