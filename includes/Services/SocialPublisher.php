@@ -144,7 +144,7 @@ final class SocialPublisher
                 'source_attachment_id'=>$backgroundId,
                 'format'=>'social_portrait',
                 'title'=>get_the_title($postId),
-                'date'=>$timestamp!==false?wp_date('d F Y',$timestamp,wp_timezone()):'',
+                'date'=>$timestamp!==false?wp_date('d.m.Y',$timestamp,wp_timezone()):'',
                 'hours'=>$timestamp!==false?wp_date('H:i',$timestamp,wp_timezone()):'',
             ]);
             update_post_meta($postId,'_dizzy_social_poster_background_id',$backgroundId);
