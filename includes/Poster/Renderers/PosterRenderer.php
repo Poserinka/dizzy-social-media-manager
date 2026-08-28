@@ -52,11 +52,11 @@ final class PosterRenderer
         $dateSize = max(8, (int) round($width * ((float) get_option('dizzy_social_date_size', 2.6) / 100)));
         $hoursSize = max(8, (int) round($width * ((float) get_option('dizzy_social_hours_size', 2.6) / 100)));
         $titleX = $this->position($width, 'dizzy_social_title_x', 7.5);
-        $titleY = $this->position($height, 'dizzy_social_title_y', 68) + $titleSize;
+        $titleY = $this->position($height, 'dizzy_social_title_y', 68);
         $dateX = $this->position($width, 'dizzy_social_date_x', 7.5);
-        $dateY = $this->position($height, 'dizzy_social_date_y', 86) + $dateSize;
+        $dateY = $this->position($height, 'dizzy_social_date_y', 86);
         $hoursX = $this->position($width, 'dizzy_social_hours_x', 7.5);
-        $hoursY = $this->position($height, 'dizzy_social_hours_y', 92) + $hoursSize;
+        $hoursY = $this->position($height, 'dizzy_social_hours_y', 92);
         $titleFont = $this->fontPath('dizzy_social_title_font');
         $dateFont = $this->fontPath('dizzy_social_date_font');
         $hoursFont = $this->fontPath('dizzy_social_hours_font');
@@ -183,19 +183,30 @@ final class PosterRenderer
 
     private function drawText($image, string $text, int $x, int $y, int $size, int $color, string $font): void
     {
-        if ($font !== '' && function_exists('imagettftext')) {
-            imagettftext($image, $size, 0, $x, $y, $color, $font, $text);
-            return;
+        if ($font !== '' && function_exists('imagettftext') && function_exists('imagettfbbox')) {
+            $box = imagettfbbox($size, 0, $font, $text);
+            if (is_array($box)) {
+                $minX = min($box[0], $box[2], $box[4], $box[6]);
+                $minY = min($box[1], $box[3], $box[5], $box[7]);
+                imagettftext($image, $size, 0, $x - $minX, $y - $minY, $color, $font, $text);
+                return;
+            }
         }
+
         $baseWidth = max(1, strlen($text) * imagefontwidth(5));
         $baseHeight = imagefontheight(5);
         $scale = max(1, $size / $baseHeight);
+        $targetWidth = max(1, (int) round($baseWidth * $scale));
         $textImage = imagecreatetruecolor($baseWidth, $baseHeight);
-        imagecolortransparent($textImage, imagecolorallocate($textImage, 0, 0, 0));
+        imagealphablending($textImage, false);
+        imagesavealpha($textImage, true);
+        imagefill($textImage, 0, 0, imagecolorallocatealpha($textImage, 0, 0, 0, 127));
+        imagealphablending($textImage, true);
         $components = imagecolorsforindex($image, $color);
-        $temporaryColor = imagecolorallocate($textImage, (int) $components['red'], (int) $components['green'], (int) $components['blue']);
+        $temporaryColor = imagecolorallocatealpha($textImage, (int) $components['red'], (int) $components['green'], (int) $components['blue'], 0);
         imagestring($textImage, 5, 0, 0, $text, $temporaryColor);
-        imagecopyresampled($image, $textImage, $x, max(0, $y - $size), 0, 0, (int) round($baseWidth * $scale), $size, $baseWidth, $baseHeight);
+        imagealphablending($image, true);
+        imagecopyresampled($image, $textImage, $x, $y, 0, 0, $targetWidth, $size, $baseWidth, $baseHeight);
         imagedestroy($textImage);
     }
 
