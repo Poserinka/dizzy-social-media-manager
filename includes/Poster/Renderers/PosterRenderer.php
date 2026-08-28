@@ -41,7 +41,9 @@ final class PosterRenderer
         $this->drawLayer($canvas, $width, $height);
         $this->drawLogo($canvas, $width, $height);
 
-        $white = imagecolorallocate($canvas, 255, 255, 255);
+        $titleColor = $this->textColor($canvas, 'dizzy_social_title_color');
+        $dateColor = $this->textColor($canvas, 'dizzy_social_date_color');
+        $hoursColor = $this->textColor($canvas, 'dizzy_social_hours_color');
         $title = trim((string) ($content['title'] ?? ''));
         $title = function_exists('mb_strtoupper') ? mb_strtoupper($title, 'UTF-8') : strtoupper($title);
         $date = trim((string) ($content['date'] ?? ''));
@@ -63,13 +65,13 @@ final class PosterRenderer
         $hoursAlign = $this->alignment('dizzy_social_hours_align');
 
         if ((bool) get_option('dizzy_social_title_enabled', true)) {
-            $this->drawWrapped($canvas, $title, $titleX, $titleY, $this->availableWidth($width, $titleX, $titleAlign), $titleSize, $white, $titleFont, 3, $titleAlign);
+            $this->drawWrapped($canvas, $title, $titleX, $titleY, $this->availableWidth($width, $titleX, $titleAlign), $titleSize, $titleColor, $titleFont, 3, $titleAlign);
         }
         if ((bool) get_option('dizzy_social_date_enabled', true)) {
-            $this->drawAlignedText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $white, $dateFont, $dateAlign);
+            $this->drawAlignedText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $dateColor, $dateFont, $dateAlign);
         }
         if ((bool) get_option('dizzy_social_hours_enabled', true)) {
-            $this->drawAlignedText($canvas, $hours, $hoursX, $hoursY, $hoursSize, $white, $hoursFont, $hoursAlign);
+            $this->drawAlignedText($canvas, $hours, $hoursX, $hoursY, $hoursSize, $hoursColor, $hoursFont, $hoursAlign);
         }
 
         if (function_exists('imageresolution')) {
@@ -81,6 +83,17 @@ final class PosterRenderer
         }
         imagedestroy($canvas);
         wp_update_attachment_metadata($attachmentId, wp_generate_attachment_metadata($attachmentId, $path));
+    }
+
+    private function textColor($canvas, string $option): int
+    {
+        $value = sanitize_hex_color((string) get_option($option, '#ffffff')) ?: '#ffffff';
+        return imagecolorallocate(
+            $canvas,
+            hexdec(substr($value, 1, 2)),
+            hexdec(substr($value, 3, 2)),
+            hexdec(substr($value, 5, 2))
+        );
     }
 
     private function position(int $size, string $option, float $default): int
