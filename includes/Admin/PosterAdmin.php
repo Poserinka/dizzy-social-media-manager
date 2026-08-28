@@ -362,7 +362,7 @@ final class PosterAdmin
             )
         );
         $date = is_string($start) && $start !== ''
-            ? wp_date('d F Y', strtotime($start), wp_timezone())
+            ? wp_date('d.m.Y', strtotime($start), wp_timezone())
             : '';
         $hours = is_string($start) && $start !== ''
             ? wp_date('H:i', strtotime($start), wp_timezone())
