@@ -63,15 +63,18 @@ final class PosterRenderer
         $titleAlign = $this->alignment('dizzy_social_title_align');
         $dateAlign = $this->alignment('dizzy_social_date_align');
         $hoursAlign = $this->alignment('dizzy_social_hours_align');
+        $titleRotation = $this->rotation('dizzy_social_title_rotation');
+        $dateRotation = $this->rotation('dizzy_social_date_rotation');
+        $hoursRotation = $this->rotation('dizzy_social_hours_rotation');
 
         if ((bool) get_option('dizzy_social_title_enabled', true)) {
-            $this->drawWrapped($canvas, $title, $titleX, $titleY, $this->availableWidth($width, $titleX, $titleAlign), $titleSize, $titleColor, $titleFont, 3, $titleAlign);
+            $this->drawWrapped($canvas, $title, $titleX, $titleY, $this->availableWidth($width, $titleX, $titleAlign), $titleSize, $titleColor, $titleFont, 3, $titleAlign, $titleRotation);
         }
         if ((bool) get_option('dizzy_social_date_enabled', true)) {
-            $this->drawAlignedText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $dateColor, $dateFont, $dateAlign);
+            $this->drawAlignedText($canvas, strtoupper($date), $dateX, $dateY, $dateSize, $dateColor, $dateFont, $dateAlign, $dateRotation);
         }
         if ((bool) get_option('dizzy_social_hours_enabled', true)) {
-            $this->drawAlignedText($canvas, $hours, $hoursX, $hoursY, $hoursSize, $hoursColor, $hoursFont, $hoursAlign);
+            $this->drawAlignedText($canvas, $hours, $hoursX, $hoursY, $hoursSize, $hoursColor, $hoursFont, $hoursAlign, $hoursRotation);
         }
 
         if (function_exists('imageresolution')) {
@@ -106,6 +109,14 @@ final class PosterRenderer
     {
         $value = (string) get_option($option, 'left');
         return in_array($value, ['left', 'center', 'right'], true) ? $value : 'left';
+    }
+
+    private function rotation(string $option): float
+    {
+        $rotation = fmod((float) get_option($option, 0), 360.0);
+        if ($rotation > 180) $rotation -= 360;
+        if ($rotation < -180) $rotation += 360;
+        return $rotation;
     }
 
     private function availableWidth(int $canvasWidth, int $anchorX, string $alignment): int
@@ -147,7 +158,7 @@ final class PosterRenderer
         imagedestroy($scaled);
     }
 
-    private function drawWrapped($image, string $text, int $anchorX, int $y, int $maxWidth, int $size, int $color, string $font, int $maxLines, string $alignment): int
+    private function drawWrapped($image, string $text, int $anchorX, int $y, int $maxWidth, int $size, int $color, string $font, int $maxLines, string $alignment, float $rotation = 0): int
     {
         $words = preg_split('/\s+/u', $text) ?: [];
         $lines = [];
@@ -163,32 +174,35 @@ final class PosterRenderer
             if (count($lines) >= $maxLines - 1) break;
         }
         if ($line !== '') $lines[] = $line;
+        $originY = $y;
         foreach (array_slice($lines, 0, $maxLines) as $lineText) {
-            $this->drawAlignedText($image, $lineText, $anchorX, $y, $size, $color, $font, $alignment);
+            $this->drawAlignedText($image, $lineText, $anchorX, $y, $size, $color, $font, $alignment, $rotation, $originY);
             $y += (int) round($size * 1.25);
         }
         return $y;
     }
 
-    private function drawAlignedText($image, string $text, int $anchorX, int $y, int $size, int $color, string $font, string $alignment): void
+    private function drawAlignedText($image, string $text, int $anchorX, int $y, int $size, int $color, string $font, string $alignment, float $rotation = 0, ?int $originY = null): void
     {
         $width = $this->textWidth($text, $size, $font);
-        $x = match ($alignment) {
-            'center' => $anchorX - (int) round($width / 2),
-            'right' => $anchorX - $width,
-            default => $anchorX,
+        $localX = match ($alignment) {
+            'center' => -$width / 2,
+            'right' => -$width,
+            default => 0,
         };
-        $this->drawText($image, $text, max(0, $x), $y, $size, $color, $font);
+        $originY ??= $y;
+        [$offsetX, $offsetY] = $this->rotatedBoundsOffset($localX, $y - $originY, $width, $size, $rotation);
+        $this->drawText($image, $text, (int) round($anchorX + $offsetX), (int) round($originY + $offsetY), $size, $color, $font, $rotation);
     }
 
-    private function drawText($image, string $text, int $x, int $y, int $size, int $color, string $font): void
+    private function drawText($image, string $text, int $x, int $y, int $size, int $color, string $font, float $rotation = 0): void
     {
         if ($font !== '' && function_exists('imagettftext') && function_exists('imagettfbbox')) {
-            $box = imagettfbbox($size, 0, $font, $text);
+            $box = imagettfbbox($size, -$rotation, $font, $text);
             if (is_array($box)) {
                 $minX = min($box[0], $box[2], $box[4], $box[6]);
                 $minY = min($box[1], $box[3], $box[5], $box[7]);
-                imagettftext($image, $size, 0, $x - $minX, $y - $minY, $color, $font, $text);
+                imagettftext($image, $size, -$rotation, $x - $minX, $y - $minY, $color, $font, $text);
                 return;
             }
         }
@@ -205,9 +219,36 @@ final class PosterRenderer
         $components = imagecolorsforindex($image, $color);
         $temporaryColor = imagecolorallocatealpha($textImage, (int) $components['red'], (int) $components['green'], (int) $components['blue'], 0);
         imagestring($textImage, 5, 0, 0, $text, $temporaryColor);
+        $scaled = imagecreatetruecolor($targetWidth, $size);
+        imagealphablending($scaled, false);
+        imagesavealpha($scaled, true);
+        imagefill($scaled, 0, 0, imagecolorallocatealpha($scaled, 0, 0, 0, 127));
+        imagecopyresampled($scaled, $textImage, 0, 0, 0, 0, $targetWidth, $size, $baseWidth, $baseHeight);
         imagealphablending($image, true);
-        imagecopyresampled($image, $textImage, $x, $y, 0, 0, $targetWidth, $size, $baseWidth, $baseHeight);
+        if (abs($rotation) > 0.01 && function_exists('imagerotate')) {
+            $transparent = imagecolorallocatealpha($scaled, 0, 0, 0, 127);
+            $rotated = imagerotate($scaled, -$rotation, $transparent);
+            if ($rotated !== false) {
+                imagesavealpha($rotated, true);
+                imagecopy($image, $rotated, $x, $y, 0, 0, imagesx($rotated), imagesy($rotated));
+                imagedestroy($rotated);
+            }
+        } else {
+            imagecopy($image, $scaled, $x, $y, 0, 0, $targetWidth, $size);
+        }
+        imagedestroy($scaled);
         imagedestroy($textImage);
+    }
+
+    /** @return array{0:float,1:float} */
+    private function rotatedBoundsOffset(float $x, float $y, float $width, float $height, float $rotation): array
+    {
+        $radians = deg2rad($rotation);
+        $cos = cos($radians);
+        $sin = sin($radians);
+        $corners = [[$x, $y], [$x + $width, $y], [$x, $y + $height], [$x + $width, $y + $height]];
+        $rotated = array_map(static fn (array $point): array => [($point[0] * $cos) - ($point[1] * $sin), ($point[0] * $sin) + ($point[1] * $cos)], $corners);
+        return [min(array_column($rotated, 0)), min(array_column($rotated, 1))];
     }
 
     private function textWidth(string $text, int $size, string $font): int
@@ -241,9 +282,19 @@ final class PosterRenderer
         imagedestroy($logo);
         $x = $this->position($canvasWidth, 'dizzy_social_logo_x', 70);
         $y = $this->position($canvasHeight, 'dizzy_social_logo_y', 5);
-        $x = max(0, min($canvasWidth - $targetWidth, $x));
-        $y = max(0, min($canvasHeight - $targetHeight, $y));
-        imagecopy($canvas, $scaled, $x, $y, 0, 0, $targetWidth, $targetHeight);
+        $rotation = $this->rotation('dizzy_social_logo_rotation');
+        if (abs($rotation) > 0.01 && function_exists('imagerotate')) {
+            $transparent = imagecolorallocatealpha($scaled, 0, 0, 0, 127);
+            $rotated = imagerotate($scaled, -$rotation, $transparent);
+            if ($rotated !== false) {
+                imagesavealpha($rotated, true);
+                [$offsetX, $offsetY] = $this->rotatedBoundsOffset(0, 0, $targetWidth, $targetHeight, $rotation);
+                imagecopy($canvas, $rotated, (int) floor($x + $offsetX), (int) floor($y + $offsetY), 0, 0, imagesx($rotated), imagesy($rotated));
+                imagedestroy($rotated);
+            }
+        } else {
+            imagecopy($canvas, $scaled, $x, $y, 0, 0, $targetWidth, $targetHeight);
+        }
         imagedestroy($scaled);
     }
 
