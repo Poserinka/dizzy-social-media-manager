@@ -56,7 +56,7 @@ final class PosterAdmin
         ob_start();
         ?>
         <p class="dizzy-featured-generate-action" style="margin:8px 0 0">
-            <button type="button" class="button" id="<?php echo esc_attr($buttonId); ?>">
+            <button type="button" class="button button-primary" id="<?php echo esc_attr($buttonId); ?>">
                 <?php esc_html_e('Set featured image and generate poster', 'dizzy-social-media-manager'); ?>
             </button>
         </p>
