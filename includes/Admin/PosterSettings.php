@@ -118,7 +118,7 @@ final class PosterSettings
                 <?php foreach ($values as $key => $value) : ?><input id="dizzy-<?php echo esc_attr(str_replace('_', '-', $key)); ?>" type="hidden" name="dizzy_social_<?php echo esc_attr($key); ?>" value="<?php echo esc_attr((string) $value); ?>"><?php endforeach; ?>
                 <div class="dizzy-background-controls">
                     <strong><?php esc_html_e('Background photo frame', 'dizzy-social-media-manager'); ?></strong>
-                    <?php foreach (['x' => __('Left', 'dizzy-social-media-manager'), 'y' => __('Top', 'dizzy-social-media-manager'), 'width' => __('Width', 'dizzy-social-media-manager'), 'height' => __('Height', 'dizzy-social-media-manager')] as $key => $label) : ?>
+                    <?php foreach (['width' => __('Width', 'dizzy-social-media-manager'), 'height' => __('Height', 'dizzy-social-media-manager')] as $key => $label) : ?>
                         <label><?php echo esc_html($label); ?> <input type="number" min="0" max="100" step="0.1" data-background-control="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr((string) $values['background_' . $key]); ?>">%</label>
                     <?php endforeach; ?>
                 </div>
