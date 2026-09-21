@@ -55,12 +55,11 @@ final class PosterAdmin
         $buttonId = 'dizzy_set_featured_generate_' . $postId;
         ob_start();
         ?>
-        <p class="dizzy-featured-generate-action">
+        <p class="dizzy-featured-generate-action" style="margin:8px 0 0">
             <button type="button" class="button" id="<?php echo esc_attr($buttonId); ?>">
                 <?php esc_html_e('Set featured image and generate poster', 'dizzy-social-media-manager'); ?>
             </button>
         </p>
-        <p class="description"><?php esc_html_e('Select an image, save the event and automatically generate a 1080 × 1350 poster.', 'dizzy-social-media-manager'); ?></p>
         <script>
         (() => {
             const button = document.getElementById(<?php echo wp_json_encode($buttonId); ?>);
