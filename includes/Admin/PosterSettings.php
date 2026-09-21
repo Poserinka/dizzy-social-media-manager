@@ -116,6 +116,12 @@ final class PosterSettings
                 <p><?php esc_html_e('Drag elements to move them and use the square handle to resize. Use the arrow keys for one-pixel movement; hold Shift for ten pixels. The background photo frame can be moved and resized independently.', 'dizzy-social-media-manager'); ?></p>
                 <p class="dizzy-layout-tools"><button type="button" class="button" data-add="title"><?php esc_html_e('Add Title', 'dizzy-social-media-manager'); ?></button> <button type="button" class="button" data-add="date"><?php esc_html_e('Add Date', 'dizzy-social-media-manager'); ?></button> <button type="button" class="button" data-add="hours"><?php esc_html_e('Add Hours', 'dizzy-social-media-manager'); ?></button> <button type="button" class="button" data-add="logo"><?php esc_html_e('Add Logo', 'dizzy-social-media-manager'); ?></button> <button type="button" class="button" data-select-background><?php esc_html_e('Edit Background Photo', 'dizzy-social-media-manager'); ?></button> <button type="button" class="button" data-reset-background><?php esc_html_e('Reset Background Photo', 'dizzy-social-media-manager'); ?></button></p>
                 <?php foreach ($values as $key => $value) : ?><input id="dizzy-<?php echo esc_attr(str_replace('_', '-', $key)); ?>" type="hidden" name="dizzy_social_<?php echo esc_attr($key); ?>" value="<?php echo esc_attr((string) $value); ?>"><?php endforeach; ?>
+                <div class="dizzy-background-controls">
+                    <strong><?php esc_html_e('Background photo frame', 'dizzy-social-media-manager'); ?></strong>
+                    <?php foreach (['x' => __('Left', 'dizzy-social-media-manager'), 'y' => __('Top', 'dizzy-social-media-manager'), 'width' => __('Width', 'dizzy-social-media-manager'), 'height' => __('Height', 'dizzy-social-media-manager')] as $key => $label) : ?>
+                        <label><?php echo esc_html($label); ?> <input type="number" min="0" max="100" step="0.1" data-background-control="<?php echo esc_attr($key); ?>" value="<?php echo esc_attr((string) $values['background_' . $key]); ?>">%</label>
+                    <?php endforeach; ?>
+                </div>
                 <div id="dizzy-layout-stage" tabindex="0">
                     <div class="dizzy-layout-item dizzy-background-item" data-item="background"><span><?php esc_html_e('BACKGROUND PHOTO', 'dizzy-social-media-manager'); ?></span><i class="dizzy-resize-handle"></i></div>
                     <img id="dizzy-layer-preview"<?php echo $layerUrl !== '' ? ' src="' . esc_url($layerUrl) . '"' : ''; ?> alt="">
@@ -129,7 +135,7 @@ final class PosterSettings
             </form>
         </div>
         <style>
-        #dizzy-layout-stage{position:relative;width:min(600px,100%);aspect-ratio:4/5;overflow:hidden;background:#101114;border:2px solid #8c8f94;touch-action:none;outline:none}#dizzy-layout-stage:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1}#dizzy-layer-preview{position:absolute;z-index:1;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}#dizzy-layer-preview:not([src]){display:none}.dizzy-layout-item{position:absolute;z-index:2;color:#fff;font-weight:700;cursor:move;user-select:none;border:0;padding:0;line-height:1;white-space:nowrap;text-shadow:0 1px 3px #000;transform-origin:top left}.dizzy-layout-item.is-selected{outline:2px dashed #72aee6;background:rgba(34,113,177,.2)}.dizzy-layout-item[data-item=title]{font-size:38px}.dizzy-layout-item[data-item=date],.dizzy-layout-item[data-item=hours]{font-size:16px}.dizzy-background-item{z-index:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:5%;min-height:5%;overflow:visible;background:linear-gradient(135deg,#3f4650,#191c20);color:rgba(255,255,255,.65);font-size:14px;letter-spacing:1px;text-shadow:none}.dizzy-background-item.is-selected{z-index:3;outline-color:#d63638;background:rgba(214,54,56,.16)}.dizzy-logo-item{width:25%;padding:0}.dizzy-logo-item img{display:block;width:100%;height:auto}.dizzy-logo-item img:not([src]){min-height:50px;background:rgba(255,255,255,.2)}.dizzy-resize-handle{display:none;position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:#2271b1;border:1px solid #fff;box-sizing:border-box;cursor:nwse-resize}.is-selected .dizzy-resize-handle{display:block}.dizzy-layout-tools{margin-bottom:10px}
+        #dizzy-layout-stage{position:relative;width:min(600px,100%);aspect-ratio:4/5;overflow:hidden;background:#101114;border:2px solid #8c8f94;touch-action:none;outline:none}#dizzy-layout-stage:focus{border-color:#2271b1;box-shadow:0 0 0 1px #2271b1}#dizzy-layer-preview{position:absolute;z-index:1;inset:0;width:100%;height:100%;object-fit:fill;pointer-events:none}#dizzy-layer-preview:not([src]){display:none}.dizzy-layout-item{position:absolute;z-index:2;color:#fff;font-weight:700;cursor:move;user-select:none;border:0;padding:0;line-height:1;white-space:nowrap;text-shadow:0 1px 3px #000;transform-origin:top left}.dizzy-layout-item.is-selected{outline:2px dashed #72aee6;background:rgba(34,113,177,.2)}.dizzy-layout-item[data-item=title]{font-size:38px}.dizzy-layout-item[data-item=date],.dizzy-layout-item[data-item=hours]{font-size:16px}.dizzy-background-item{z-index:0;display:flex;align-items:center;justify-content:center;box-sizing:border-box;min-width:5%;min-height:5%;overflow:visible;background:linear-gradient(135deg,#3f4650,#191c20);color:rgba(255,255,255,.65);font-size:14px;letter-spacing:1px;text-shadow:none}.dizzy-background-item.is-selected{z-index:3;outline-color:#d63638;background:rgba(214,54,56,.16)}.dizzy-background-item .dizzy-resize-handle{right:6px;bottom:6px;width:22px;height:22px;background:#d63638;box-shadow:0 0 0 2px rgba(255,255,255,.8)}.dizzy-logo-item{width:25%;padding:0}.dizzy-logo-item img{display:block;width:100%;height:auto}.dizzy-logo-item img:not([src]){min-height:50px;background:rgba(255,255,255,.2)}.dizzy-resize-handle{display:none;position:absolute;right:-6px;bottom:-6px;width:12px;height:12px;background:#2271b1;border:1px solid #fff;box-sizing:border-box;cursor:nwse-resize}.is-selected .dizzy-resize-handle{display:block}.dizzy-layout-tools{margin-bottom:10px}.dizzy-background-controls{display:flex;align-items:center;flex-wrap:wrap;gap:10px 16px;margin:0 0 12px;padding:10px 12px;width:min(576px,100%);box-sizing:border-box;background:#fff;border:1px solid #c3c4c7}.dizzy-background-controls label{display:flex;align-items:center;gap:5px}.dizzy-background-controls input{width:76px}
         #dizzy-layout-stage::after{content:"";position:absolute;z-index:10;pointer-events:none;top:0;bottom:0;left:50%;width:1px;background:rgba(255,255,255,.65);box-shadow:0 0 1px rgba(0,0,0,.8);transition:background .12s,box-shadow .12s}#dizzy-layout-stage.is-snapping::after{width:2px;background:#72aee6;box-shadow:0 0 8px #72aee6}
         </style>
         <script>
@@ -159,6 +165,10 @@ final class PosterSettings
                     el.style.top = field(c.y).value + '%';
                     el.style.width = field(c.width).value + '%';
                     el.style.height = field(c.height).value + '%';
+                    Object.entries({x: c.x, y: c.y, width: c.width, height: c.height}).forEach(([control, source]) => {
+                        const input = document.querySelector('[data-background-control="' + control + '"]');
+                        if (input && document.activeElement !== input) input.value = Number(field(source).value).toFixed(2);
+                    });
                     return;
                 }
 
@@ -280,6 +290,22 @@ final class PosterSettings
                 choose(item(key));
             }));
             document.querySelector('[data-select-background]').addEventListener('click', () => choose(item('background')));
+            document.querySelectorAll('[data-background-control]').forEach(control => control.addEventListener('input', () => {
+                const c = cfg.background;
+                const key = control.dataset.backgroundControl;
+                const target = {x: c.x, y: c.y, width: c.width, height: c.height}[key];
+                let value = Number(control.value);
+                if (!Number.isFinite(value)) return;
+                if (key === 'x') value = clamp(value, 0, 100 - Number(field(c.width).value));
+                if (key === 'y') value = clamp(value, 0, 100 - Number(field(c.height).value));
+                if (key === 'width') value = clamp(value, 5, 100 - Number(field(c.x).value));
+                if (key === 'height') value = clamp(value, 5, 100 - Number(field(c.y).value));
+                field(target).value = value.toFixed(2);
+                render('background');
+                stage.querySelectorAll('.dizzy-layout-item').forEach(node => node.classList.remove('is-selected'));
+                selected = 'background';
+                item('background').classList.add('is-selected');
+            }));
             document.querySelector('[data-reset-background]').addEventListener('click', () => {
                 field('background-x').value = '0';
                 field('background-y').value = '0';
