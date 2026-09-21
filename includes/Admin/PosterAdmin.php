@@ -43,6 +43,69 @@ final class PosterAdmin
 
         add_action('save_post_' . Config::POST_TYPE_EVENT, [$this, 'queueGenerationAfterSave'], 30, 3);
         add_filter('redirect_post_location', [$this, 'addGenerationToRedirect'], 20, 2);
+        add_filter('admin_post_thumbnail_html', [$this, 'featuredImageGenerateButton'], 20, 3);
+    }
+
+    public function featuredImageGenerateButton(string $content, int $postId, mixed $thumbnailId): string
+    {
+        if (get_post_type($postId) !== Config::POST_TYPE_EVENT || ! current_user_can('edit_post', $postId)) {
+            return $content;
+        }
+
+        $buttonId = 'dizzy_set_featured_generate_' . $postId;
+        ob_start();
+        ?>
+        <p class="dizzy-featured-generate-action">
+            <button type="button" class="button" id="<?php echo esc_attr($buttonId); ?>">
+                <?php esc_html_e('Set featured image and generate poster', 'dizzy-social-media-manager'); ?>
+            </button>
+        </p>
+        <p class="description"><?php esc_html_e('Select an image, save the event and automatically generate a 1080 × 1350 poster.', 'dizzy-social-media-manager'); ?></p>
+        <script>
+        (() => {
+            const button = document.getElementById(<?php echo wp_json_encode($buttonId); ?>);
+            if (!button || button.dataset.dizzyReady === '1') return;
+            button.dataset.dizzyReady = '1';
+            button.addEventListener('click', () => {
+                const frame = wp.media({
+                    title: <?php echo wp_json_encode(__('Select featured image', 'dizzy-social-media-manager')); ?>,
+                    button: {text: <?php echo wp_json_encode(__('Set featured image and generate poster', 'dizzy-social-media-manager')); ?>},
+                    library: {type: 'image'},
+                    multiple: false
+                });
+                frame.on('select', () => {
+                    const image = frame.state().get('selection').first().toJSON();
+                    if (!image?.id) return;
+                    if (wp.media.featuredImage?.set) wp.media.featuredImage.set(image.id);
+
+                    const form = document.getElementById('post');
+                    const save = document.getElementById('publish') || document.getElementById('save-post');
+                    if (!form || !save) return;
+                    const values = {
+                        dizzy_social_generate_after_save: '1',
+                        dizzy_social_pending_background_id: String(image.id),
+                        dizzy_social_pending_format: 'social_portrait'
+                    };
+                    Object.entries(values).forEach(([name, value]) => {
+                        let input = form.querySelector('[name="' + name + '"]');
+                        if (!input) {
+                            input = document.createElement('input');
+                            input.type = 'hidden';
+                            input.name = name;
+                            form.appendChild(input);
+                        }
+                        input.value = value;
+                    });
+                    button.disabled = true;
+                    button.textContent = <?php echo wp_json_encode(__('Saving event and generating poster...', 'dizzy-social-media-manager')); ?>;
+                    window.setTimeout(() => save.click(), 350);
+                });
+                frame.open();
+            });
+        })();
+        </script>
+        <?php
+        return $content . (string) ob_get_clean();
     }
 
     public function addMetaBox(): void
