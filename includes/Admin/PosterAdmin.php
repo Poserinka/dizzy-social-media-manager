@@ -65,6 +65,21 @@ final class PosterAdmin
             const button = document.getElementById(<?php echo wp_json_encode($buttonId); ?>);
             if (!button || button.dataset.dizzyReady === '1') return;
             button.dataset.dizzyReady = '1';
+            const placeBelowSetFeaturedImage = () => {
+                const actions = document.querySelector('#postimagediv .dizzy-featured-actions');
+                if (!actions || actions.contains(button)) return Boolean(actions);
+                const wrapper = button.closest('.dizzy-featured-generate-action');
+                const remove = actions.querySelector('#remove-post-thumbnail');
+                actions.insertBefore(button, remove || null);
+                wrapper?.remove();
+                return true;
+            };
+            if (!placeBelowSetFeaturedImage()) {
+                const observer = new MutationObserver(() => {
+                    if (placeBelowSetFeaturedImage()) observer.disconnect();
+                });
+                observer.observe(document.body, {childList: true, subtree: true});
+            }
             button.addEventListener('click', () => {
                 const frame = wp.media({
                     title: <?php echo wp_json_encode(__('Select featured image', 'dizzy-social-media-manager')); ?>,
