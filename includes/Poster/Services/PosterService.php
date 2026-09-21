@@ -23,7 +23,7 @@ final class PosterService
 
     public function create(array $data): Poster
     {
-        $formatKey = PosterFormats::sanitize((string) ($data['format'] ?? 'social_square'));
+        $formatKey = PosterFormats::sanitize((string) ($data['format'] ?? 'social_portrait'));
         $format = PosterFormats::get($formatKey);
         $sourceAttachmentId = (int) ($data['source_attachment_id'] ?? 0);
         $imageUrl = isset($data['image_url']) && is_string($data['image_url'])

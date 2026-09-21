@@ -145,7 +145,7 @@ final class PosterAdmin
         $pendingBackgroundId = isset($_GET['dizzy_social_background_id']) ? absint($_GET['dizzy_social_background_id']) : 0;
         $pendingFormat = isset($_GET['dizzy_social_format']) && is_string($_GET['dizzy_social_format'])
             ? PosterFormats::sanitize(sanitize_key(wp_unslash($_GET['dizzy_social_format'])))
-            : 'social_square';
+            : 'social_portrait';
 
         $backgroundId = (int) get_post_meta($post->ID, '_dizzy_social_poster_background_id', true);
         if ($backgroundId <= 0) {
@@ -248,7 +248,7 @@ final class PosterAdmin
             'format' => PosterFormats::sanitize(
                 isset($_POST['dizzy_social_pending_format'])
                     ? sanitize_key(wp_unslash((string) $_POST['dizzy_social_pending_format']))
-                    : 'social_square'
+                    : 'social_portrait'
             ),
         ];
     }
@@ -293,7 +293,7 @@ final class PosterAdmin
             ?: admin_url('post.php?post=' . $postId . '&action=edit');
 
         try {
-            $formatKey = PosterFormats::sanitize(isset($_POST['format']) && is_string($_POST['format']) ? sanitize_key(wp_unslash($_POST['format'])) : 'social_square');
+            $formatKey = PosterFormats::sanitize(isset($_POST['format']) && is_string($_POST['format']) ? sanitize_key(wp_unslash($_POST['format'])) : 'social_portrait');
             $backgroundId = isset($_POST['background_id']) ? absint($_POST['background_id']) : 0;
             if ($backgroundId <= 0) {
                 $backgroundId = (int) get_post_thumbnail_id($postId);
